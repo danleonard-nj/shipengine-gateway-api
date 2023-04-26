@@ -2,7 +2,6 @@ import asyncio
 from typing import Dict, List
 
 from framework.clients.cache_client import CacheClientAsync
-from framework.clients.http_client import HttpClient
 from framework.logger.providers import get_logger
 
 from clients.shipengine_client import ShipEngineClient
