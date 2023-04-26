@@ -1,0 +1,212 @@
+from typing import Dict
+
+from framework.configuration.configuration import Configuration
+from framework.exceptions.nulls import ArgumentNullException
+from framework.logger.providers import get_logger
+from framework.serialization.utilities import serialize
+from framework.utilities.url_utils import build_url
+from httpx import AsyncClient
+
+logger = get_logger(__name__)
+
+
+class ShipEngineClient:
+    def __init__(
+        self,
+        http_client: AsyncClient,
+        configuration: Configuration
+    ):
+        # self.__http_client = HttpClient()
+
+        self.__http_client = http_client
+        self.__base_url = configuration.shipengine.get(
+            'base_url')
+        self.__api_key = configuration.shipengine.get(
+            'api_key')
+
+    def __get_headers(
+        self
+    ) -> dict:
+        return {
+            'Content-Type': 'application/json',
+            'API-Key': self.__api_key
+        }
+
+    async def create_label(
+        self,
+        shipment_id: str
+    ) -> Dict:
+        ArgumentNullException.if_none_or_whitespace(shipment_id, 'shipment_id')
+
+        logger.info(f'Create label for shipment: {shipment_id}')
+
+        response = await self.__http_client.post(
+            url=f'{self.__base_url}/labels/shipment/{shipment_id}',
+            headers=self.__get_headers())
+
+        content = response.json()
+        logger.info(f'Response status: {response.status_code}')
+        logger.info(f'Response: {serialize(content)}')
+
+        return content
+
+    async def get_label(
+        self,
+        shipment_id: str
+    ) -> Dict:
+        ArgumentNullException.if_none_or_whitespace(shipment_id, 'shipment_id')
+
+        logger.info(f'Get label for shipment: {shipment_id}')
+
+        url = build_url(
+            base=f'{self.__base_url}/labels',
+            shipment_id=shipment_id)
+
+        logger.info(f'Get label endpoint: {url}')
+
+        response = await self.__http_client.get(
+            url=url,
+            headers=self.__get_headers())
+
+        logger.info(f'Status: {response.status_code}')
+        return response.json()
+
+    async def get_shipments(
+        self,
+        page_number: int,
+        page_size: int
+    ) -> Dict:
+        logger.info('Get Shipments')
+
+        url = build_url(
+            base=f'{self.__base_url}/shipments',
+            sort_by='created_at',
+            sort_dir='desc',
+            page=page_number,
+            page_size=page_size)
+
+        logger.info(f'Get shipments endpoint: {url}')
+
+        response = await self.__http_client.get(
+            url=url,
+            headers=self.__get_headers(),
+            timeout=None)
+
+        logger.info(f'Status: {response.status_code}')
+        return response.json()
+
+    async def create_shipment(
+        self,
+        data: Dict
+    ) -> Dict:
+        ArgumentNullException.if_none_or_whitespace(data, 'data')
+
+        logger.info(f'Create shipment request: {data}')
+
+        response = await self.__http_client.post(
+            url=f'{self.__base_url}/shipments',
+            headers=self.__get_headers(),
+            json=data)
+
+        content = response.json()
+
+        logger.info(f'Create shipment status: {response.status_code}')
+        logger.info(f'Create shipment response: {serialize(content)}')
+
+        return content
+
+    async def update_shipment(
+        self,
+        shipment_id: str,
+        data: Dict
+    ) -> Dict:
+        ArgumentNullException.if_none_or_whitespace(shipment_id, 'shipment_id')
+        ArgumentNullException.if_none(data, 'data')
+
+        logger.info(f'Update shipment: {shipment_id}')
+
+        response = await self.__http_client.put(
+            url=f'{self.__base_url}/shipments/{shipment_id}',
+            headers=self.__get_headers(),
+            json=data,
+            timeout=None)
+
+        content = response.json()
+        logger.info(f'Status: {response.status_code}')
+        logger.info(f'Response status: {response.status_code}')
+
+        return content
+
+    async def get_carriers(
+        self
+    ) -> Dict:
+        logger.info('Get carriers from client')
+
+        response = await self.__http_client.get(
+            url=f'{self.__base_url}/carriers',
+            headers=self.__get_headers(),
+            timeout=None)
+
+        content = response.json()
+
+        logger.info(f'Get carriers status: {response.status_code}')
+        # logger.info(f'Response: {serialize(content)}')
+
+        return content
+
+    async def cancel_shipment(
+        self,
+        shipment_id: str
+    ):
+        ArgumentNullException.if_none_or_whitespace(shipment_id, 'shipment_id')
+
+        logger.info(f'Attempting to cancel shipment: {shipment_id}')
+
+        response = await self.__http_client.put(
+            url=f'{self.__base_url}/shipments/{shipment_id}/cancel',
+            headers=self.__get_headers(),
+            timeout=None)
+
+        logger.info(f'Response: {response.status_code}')
+
+    async def get_shipment(
+        self,
+        shipment_id: str
+    ) -> Dict:
+        ArgumentNullException.if_none_or_whitespace(shipment_id, 'shipment_id')
+
+        logger.info(f'Get shipment: {shipment_id}')
+
+        response = await self.__http_client.get(
+            url=f'{self.__base_url}/shipments/{shipment_id}',
+            headers=self.__get_headers(),
+            timeout=None)
+
+        content = response.json()
+        logger.info(f'Response status: {response.status_code}')
+        logger.info(f'Response: {serialize(content)}')
+
+        return content or dict()
+
+    async def get_rates(
+        self,
+        shipment: Dict
+    ) -> Dict:
+        ArgumentNullException.if_none(shipment, 'shipment')
+
+        logger.info('Get rates for shipment')
+
+        # TODO: Switch to estimate route /api/rates/estimate to avoid creating
+        # a new shipment every time
+        response = await self.__http_client.post(
+            url=f'{self.__base_url}/rates',
+            json=shipment,
+            headers=self.__get_headers(),
+            timeout=None)
+
+        content = response.json()
+
+        logger.info(f'Get shipment rates status: {response.status_code}')
+        logger.info(f'Get shipment rates response: {content}')
+
+        return content

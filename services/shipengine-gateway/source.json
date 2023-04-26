@@ -1,0 +1,6 @@
+[
+  {
+    "source": "configs/gateway/shipengine-gateway/config.json",
+    "target": "services/shipengine-gateway/config.json"
+  }
+]
