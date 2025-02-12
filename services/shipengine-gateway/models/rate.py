@@ -3,7 +3,6 @@ from typing import Dict, List
 from deprecated import deprecated
 from framework.logger.providers import get_logger
 from framework.serialization import Serializable
-from framework.serialization.utilities import to_json
 from domain.exceptions import InvalidOriginException
 from models.shipment import ShipmentAddress, ShipmentPackage
 from services.fields import Field, FieldClass

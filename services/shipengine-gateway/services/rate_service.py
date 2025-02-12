@@ -25,8 +25,8 @@ class RateService:
         ArgumentNullException.if_none(cache_client, 'cache_client')
 
         self.__client = shipengine_client
-        self.__carrier_service = carrier_service
-        self.__cache_client = cache_client
+        self._carrier_service = carrier_service
+        self._cache_client = cache_client
 
     async def get_rates(
         self,
@@ -101,7 +101,7 @@ class RateService:
         cache_key = CacheKey.get_carrier_list()
         logger.info(f'Fetch carriers @ key: {cache_key}')
 
-        cached_carriers = await self.__cache_client.get_json(
+        cached_carriers = await self._cache_client.get_json(
             key=cache_key)
 
         if cached_carriers is not None:
@@ -109,10 +109,10 @@ class RateService:
             return cached_carriers
 
         logger.info(f'Fetching carriers from carrier service')
-        carriers = await self.__carrier_service.get_carriers()
+        carriers = await self._carrier_service.get_carriers()
 
         # Cache async for one week
-        asyncio.create_task(self.__cache_client.set_json(
+        asyncio.create_task(self._cache_client.set_json(
             key=cache_key,
             value=carriers,
             ttl=60))

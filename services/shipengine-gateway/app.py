@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from framework.abstractions.abstract_request import RequestContextProvider
-from framework.dependency_injection.provider import InternalProvider
+from framework.di.static_provider import InternalProvider
 from framework.logger.providers import get_logger
 from quart import Quart
 
@@ -26,8 +26,7 @@ app.register_blueprint(carrier_bp)
 app.register_blueprint(rates_bp)
 app.register_blueprint(label_bp)
 
-ContainerProvider.initialize_provider()
-InternalProvider.bind(ContainerProvider.get_service_provider())
+provider = ContainerProvider.initialize_provider()
 
 
 @app.before_serving
