@@ -1,4 +1,4 @@
 twilio
 quart
 uvicorn
-framework==0.3.0
+framework==0.4.0
