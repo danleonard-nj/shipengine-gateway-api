@@ -92,7 +92,21 @@ class Shipment(Serializable):
     def to_dict(
         self
     ) -> Dict:
-        return self.to_json()
+        return {
+            'id': self.shipment_id,
+            'carrier_id': self.carrier_id,
+            'carrier_name': self.carrier_name,
+            'created_date': self.created_date,
+            'packages': [package.to_json() for package in self.packages],
+            'return_address': self.return_address.to_json(),
+            'service_code': self.service_code,
+            'service_code_name': self.service_code_name,
+            'ship_date': self.ship_date,
+            'origin': self.origin.to_json(),
+            'destination': self.destination.to_json(),
+            'shipment_status': self.shipment_status,
+            'total_weight': self.total_weight,
+        }
 
 
 class CreateShipment(Serializable):
@@ -194,11 +208,11 @@ class ShipmentPackage(Serializable):
             data.get('weight'), int) else data.get('weight').get('value')
 
         self.length = data.get('length') if isinstance(
-            data.get('length'), int) else data.get('dimensions').get('length')
+            data.get('length'), int) else data.get('dimensions', dict()).get('length')
         self.width = data.get('width') if isinstance(
-            data.get('width'), int) else data.get('dimensions').get('width')
+            data.get('width'), int) else data.get('dimensions', dict()).get('width')
         self.height = data.get('height') if isinstance(
-            data.get('height'), int) else data.get('dimensions').get('height')
+            data.get('height'), int) else data.get('dimensions', dict()).get('height')
 
         self.insured_value = data.get('insured_value') if isinstance(
             data.get('height'), int) else data.get('insured_value').get('amount')

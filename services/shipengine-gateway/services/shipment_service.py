@@ -26,8 +26,8 @@ class ShipmentService:
         ArgumentNullException.if_none(shipengine_client, 'shipengine_client')
         ArgumentNullException.if_none(cache_client, 'cache_client')
 
-        self.__mapper_service = mapper_service
-        self.__shipengine_client = shipengine_client
+        self._mapper_service = mapper_service
+        self._shipengine_client = shipengine_client
         self.__cache_client = cache_client
 
     async def cancel_shipment(
@@ -38,7 +38,7 @@ class ShipmentService:
 
         ArgumentNullException.if_none_or_whitespace(shipment_id, 'shipment_id')
 
-        await self.__shipengine_client.cancel_shipment(
+        await self._shipengine_client.cancel_shipment(
             shipment_id=shipment_id)
 
         return {
@@ -51,22 +51,25 @@ class ShipmentService:
     ) -> Dict:
         logger.info('Get shipments from ShipEngine client')
 
-        response = await self.__shipengine_client.get_shipments(
+        response = await self._shipengine_client.get_shipments(
             page_number=request.page_number,
             page_size=request.page_size)
 
         logger.info('Shipments fetched successfully')
 
-        service_code_mapping = await self.__mapper_service.get_carrier_service_code_mapping()
-        carrier_mapping = await self.__mapper_service.get_carrier_mapping()
+        service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
+        carrier_mapping = await self._mapper_service.get_carrier_mapping()
 
         shipments = []
         for shipment in response.get('shipments'):
-            model = Shipment(
-                data=shipment,
-                service_code_mapping=service_code_mapping,
-                carrier_mapping=carrier_mapping)
-            shipments.append(model.to_json())
+            try:
+                model = Shipment(
+                    data=shipment,
+                    service_code_mapping=service_code_mapping,
+                    carrier_mapping=carrier_mapping)
+                shipments.append(model.to_json())
+            except:
+                logger.error(f'Error parsing shipment: {serialize(shipment)}')
 
         return {
             'shipments': shipments,
@@ -84,7 +87,7 @@ class ShipmentService:
 
         shipment_data = shipment.to_json()
 
-        result = await self.__shipengine_client.create_shipment(
+        result = await self._shipengine_client.create_shipment(
             data=shipment_data)
 
         created = first_or_default(result.get('shipments'))
@@ -110,7 +113,7 @@ class ShipmentService:
 
         shipment_data = shipment.to_json()
 
-        result = await self.__shipengine_client.create_shipment(
+        result = await self._shipengine_client.create_shipment(
             data=shipment_data)
 
         created = first_or_default(result.get('shipments'))
@@ -132,12 +135,12 @@ class ShipmentService:
         shipment_id: str
     ):
         logger.info(f'Get shipment: {shipment_id}')
-        shipment = await self.__shipengine_client.get_shipment(
+        shipment = await self._shipengine_client.get_shipment(
             shipment_id=shipment_id)
 
         logger.info(f'Fetching carrier mapping')
-        service_code_mapping = await self.__mapper_service.get_carrier_service_code_mapping()
-        carrier_mapping = await self.__mapper_service.get_carrier_mapping()
+        service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
+        carrier_mapping = await self._mapper_service.get_carrier_mapping()
 
         result = Shipment(
             data=shipment,
