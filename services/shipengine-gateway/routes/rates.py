@@ -17,3 +17,15 @@ async def get_rates(container):
         shipment=data)
 
     return response
+
+
+@rates_bp.configure('/api/rates/estimate', methods=['POST'], auth_scheme='read')
+async def get_estimate(container):
+    rate_service: RateService = container.resolve(
+        RateService)
+
+    data = await request.get_json()
+    response = await rate_service.get_estimate(
+        shipment=data)
+
+    return response

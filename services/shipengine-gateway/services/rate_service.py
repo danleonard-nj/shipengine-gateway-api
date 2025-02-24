@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict
+from typing import Dict, Optional
 
 from framework.clients.cache_client import CacheClientAsync
 from framework.exceptions.nulls import ArgumentNullException
@@ -24,9 +24,87 @@ class RateService:
         ArgumentNullException.if_none(shipengine_client, 'shipengine_client')
         ArgumentNullException.if_none(cache_client, 'cache_client')
 
-        self.__client = shipengine_client
+        self._client = shipengine_client
         self._carrier_service = carrier_service
         self._cache_client = cache_client
+
+    async def get_estimate(
+        self,
+        shipment: dict,
+        carrier_ids: Optional[list[str] | str] = None
+    ):
+        logger.info('Get shipment estimate')
+
+        if carrier_ids is not None:
+            if isinstance(carrier_ids, str):
+                carrier_ids = [carrier_ids]
+            if isinstance(carrier_ids, list):
+                carrier_ids = [
+                    x.strip()
+                    for x in carrier_ids
+                ]
+            else:
+                raise ValueError('Invalid carrier IDs provided')
+        else:
+            logger.info('No carrier IDs provided, fetching all carriers')
+            carriers = await self._get_carriers()
+            carrier_ids = [
+                x.get('carrier_id')
+                for x in carriers
+            ]
+
+        data = {
+            'carrier_ids': carrier_ids,
+            'from_country_code': shipment.get('origin').get('country_code'),
+            'from_postal_code': shipment.get('origin').get('zip_code'),
+            'from_city_locality': shipment.get('origin').get('city_locality'),
+            'from_state_province': shipment.get('origin').get('state_province'),
+            'to_country_code': shipment.get('destination').get('country_code'),
+            'to_postal_code': shipment.get('destination').get('zip_code'),
+            'to_city_locality': shipment.get('destination').get('city_locality'),
+            'to_state_province': shipment.get('destination').get('state_province'),
+            'weight': {
+                'value': shipment.get('total_weight'),
+                'unit': 'pound'
+            },
+            'dimensions': {
+                'unit': 'inch',
+                'length': shipment.get('length'),
+                'width': shipment.get('width'),
+                'height': shipment.get('height')
+            },
+        }
+
+        rates = await self._client.estimate_shipment(
+            shipment=data)
+
+        return rates
+
+        # model = ShipmentRate().from_json(
+        #     data=shipment)
+        # model.validate()
+
+        # rate_request = model.to_shipment_json()
+        # rates = await self.__client.get_rates(
+        #     shipment=rate_request)
+
+        # rate_response = rates.get('rate_response')
+        # rate_details = rate_response.get('rates')
+
+        # carrier_rate_errors = {
+        #     error.get('carrier_id'): self.to_rate_error(error)
+        #     for error in rate_response.get('errors')
+        # }
+
+        # results = [
+        #     Rate(rate, carrier_rate_errors).to_rate()
+        #     for rate in rate_details
+        # ]
+
+        # return {
+        #     'quotes': results,
+        #     'errors': carrier_rate_errors
+        # }
 
     async def get_rates(
         self,
@@ -36,7 +114,7 @@ class RateService:
 
         # TODO: Just cache the IDs here instead of the entire carrier list?
         logger.info('Fetching carrier list')
-        carriers = await self.__get_carriers()
+        carriers = await self._get_carriers()
 
         # Get a list of all distinct carrier IDs to get
         # quotes for
@@ -95,7 +173,7 @@ class RateService:
             "message": error.get('message')
         }
 
-    async def __get_carriers(
+    async def _get_carriers(
         self
     ):
         cache_key = CacheKey.get_carrier_list()

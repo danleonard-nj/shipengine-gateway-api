@@ -24,7 +24,7 @@ class ShipEngineClient:
         self.__api_key = configuration.shipengine.get(
             'api_key')
 
-    def __get_headers(
+    def _get_headers(
         self
     ) -> dict:
         return {
@@ -42,7 +42,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.post(
             url=f'{self.__base_url}/labels/shipment/{shipment_id}',
-            headers=self.__get_headers())
+            headers=self._get_headers())
 
         content = response.json()
         logger.info(f'Response status: {response.status_code}')
@@ -66,7 +66,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.get(
             url=url,
-            headers=self.__get_headers())
+            headers=self._get_headers())
 
         logger.info(f'Status: {response.status_code}')
         return response.json()
@@ -89,7 +89,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.get(
             url=url,
-            headers=self.__get_headers(),
+            headers=self._get_headers(),
             timeout=None)
 
         logger.info(f'Status: {response.status_code}')
@@ -105,7 +105,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.post(
             url=f'{self.__base_url}/shipments',
-            headers=self.__get_headers(),
+            headers=self._get_headers(),
             json=data)
 
         content = response.json()
@@ -127,7 +127,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.put(
             url=f'{self.__base_url}/shipments/{shipment_id}',
-            headers=self.__get_headers(),
+            headers=self._get_headers(),
             json=data,
             timeout=None)
 
@@ -144,7 +144,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.get(
             url=f'{self.__base_url}/carriers',
-            headers=self.__get_headers(),
+            headers=self._get_headers(),
             timeout=None)
 
         content = response.json()
@@ -164,7 +164,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.put(
             url=f'{self.__base_url}/shipments/{shipment_id}/cancel',
-            headers=self.__get_headers(),
+            headers=self._get_headers(),
             timeout=None)
 
         logger.info(f'Response: {response.status_code}')
@@ -179,7 +179,7 @@ class ShipEngineClient:
 
         response = await self.__http_client.get(
             url=f'{self.__base_url}/shipments/{shipment_id}',
-            headers=self.__get_headers(),
+            headers=self._get_headers(),
             timeout=None)
 
         content = response.json()
@@ -201,12 +201,33 @@ class ShipEngineClient:
         response = await self.__http_client.post(
             url=f'{self.__base_url}/rates',
             json=shipment,
-            headers=self.__get_headers(),
+            headers=self._get_headers(),
             timeout=None)
 
         content = response.json()
 
         logger.info(f'Get shipment rates status: {response.status_code}')
         logger.info(f'Get shipment rates response: {content}')
+
+        return content
+
+    async def estimate_shipment(
+        self,
+        shipment: Dict
+    ) -> Dict:
+        ArgumentNullException.if_none(shipment, 'shipment')
+
+        logger.info('Estimate shipment')
+
+        response = await self.__http_client.post(
+            url=f'{self.__base_url}/rates/estimate',
+            json=shipment,
+            headers=self._get_headers(),
+            timeout=None)
+
+        content = response.json()
+
+        logger.info(f'Estimate shipment status: {response.status_code}')
+        logger.info(f'Estimate shipment response: {content}')
 
         return content
