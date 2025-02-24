@@ -9,11 +9,13 @@ from httpx import AsyncClient
 from quart import Quart, request
 
 from clients.shipengine_client import ShipEngineClient
+from data.shipment_repository import ShipmentRepository
 from services.carrier_service import CarrierService
 from services.label_service import LabelService
 from services.mapper_service import MapperService
 from services.rate_service import RateService
 from services.shipment_service import ShipmentService
+from motor.motor_asyncio import AsyncIOMotorClient
 
 
 class AdRole:
@@ -47,6 +49,17 @@ def configure_azure_ad(container):
     return azure_ad
 
 
+def configure_mongo_client(
+    container: ServiceCollection
+):
+    configuration = container.resolve(Configuration)
+
+    connection_string = configuration.mongo.get('connection_string')
+    client = AsyncIOMotorClient(connection_string)
+
+    return client
+
+
 class ContainerProvider(ProviderBase):
     @classmethod
     def configure_container(cls):
@@ -63,9 +76,15 @@ class ContainerProvider(ProviderBase):
             dependency_type=AzureAd,
             factory=configure_azure_ad)
 
+        descriptors.add_singleton(
+            dependency_type=AsyncIOMotorClient,
+            factory=configure_mongo_client)
+
         descriptors.add_singleton(MapperService)
         descriptors.add_singleton(ShipEngineClient)
         descriptors.add_singleton(CarrierService)
+
+        descriptors.add_singleton(ShipmentRepository)
 
         descriptors.add_transient(LabelService)
         descriptors.add_transient(RateService)

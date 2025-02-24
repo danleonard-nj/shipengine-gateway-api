@@ -14,8 +14,8 @@ label_status_mapping = {
 
 
 def mapped_value(mapping, value):
-    return (
-        (mapping.get(value) or value)
-        if value is not None
-        else None
-    )
+    if value is None:
+        return 'n/a'
+
+    val = mapping.get(value, 'n/a')
+    return val
