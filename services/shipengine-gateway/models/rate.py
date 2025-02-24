@@ -1,13 +1,14 @@
 from typing import Dict, List
 
 from deprecated import deprecated
+from domain.exceptions import InvalidOriginException
+from framework.exceptions.nulls import ArgumentNullException
 from framework.logger.providers import get_logger
 from framework.serialization import Serializable
-from domain.exceptions import InvalidOriginException
+from framework.validators.nulls import none_or_whitespace
 from models.shipment import ShipmentAddress, ShipmentPackage
 from services.fields import Field, FieldClass
-from framework.exceptions.nulls import ArgumentNullException
-from framework.validators.nulls import none_or_whitespace
+from framework.serialization.utilities import serialize
 
 logger = get_logger(__name__)
 
@@ -196,7 +197,7 @@ class ShipmentRate(FieldClass, Serializable):
         }
 
         logger.info('Shipment create model')
-        logger.info(to_json(result))
+        logger.info(serialize(result))
 
         return result
 
@@ -305,6 +306,6 @@ class CarrierRate(FieldClass, Serializable):
         }
 
         logger.info('Shipment create model')
-        logger.info(to_json(result))
+        logger.info(serialize(result))
 
         return result

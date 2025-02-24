@@ -1,16 +1,26 @@
 import asyncio
-from typing import Dict, Optional
-
-from framework.clients.cache_client import CacheClientAsync
-from framework.exceptions.nulls import ArgumentNullException
-from framework.logger.providers import get_logger
+from typing import Optional
 
 from clients.shipengine_client import ShipEngineClient
 from constants.cache import CacheKey
+from deprecated import deprecated
+from framework.clients.cache_client import CacheClientAsync
+from framework.exceptions.nulls import ArgumentNullException
+from framework.logger.providers import get_logger
 from models.rate import Rate, ShipmentRate
+from models.requests import RateEstimateRequest
 from services.carrier_service import CarrierService
 
 logger = get_logger(__name__)
+
+
+def to_rate_error(error: dict):
+    return {
+        "error_code": error.get('error_code'),
+        "error_source": error.get('error_source'),
+        "error_type": error.get('error_type'),
+        "message": error.get('message')
+    }
 
 
 class RateService:
@@ -35,55 +45,50 @@ class RateService:
     ):
         logger.info('Get shipment estimate')
 
-        if carrier_ids is not None:
-            if isinstance(carrier_ids, str):
-                carrier_ids = [carrier_ids]
-            if isinstance(carrier_ids, list):
-                carrier_ids = [
-                    x.strip()
-                    for x in carrier_ids
-                ]
-            else:
-                raise ValueError('Invalid carrier IDs provided')
-        else:
+        cache_key = CacheKey.get_estimate(shipment)
+        cached = await self._cache_client.get_json(
+            key=cache_key)
+
+        if cached is not None:
+            logger.info('Returning cached estimate')
+            return cached
+
+        if carrier_ids is None:
             logger.info('No carrier IDs provided, fetching all carriers')
             carriers = await self._get_carriers()
-            carrier_ids = [
-                x.get('carrier_id')
-                for x in carriers
-            ]
+            carrier_ids = [carrier.get('carrier_id') for carrier in carriers]
+        elif isinstance(carrier_ids, str):
+            carrier_ids = [carrier_ids.strip()]
+        elif isinstance(carrier_ids, list):
+            carrier_ids = [carrier.strip() for carrier in carrier_ids]
+        else:
+            raise ValueError('Invalid carrier IDs provided')
 
-        data = {
-            'carrier_ids': carrier_ids,
-            'from_country_code': shipment.get('origin').get('country_code'),
-            'from_postal_code': shipment.get('origin').get('zip_code'),
-            'from_city_locality': shipment.get('origin').get('city_locality'),
-            'from_state_province': shipment.get('origin').get('state_province'),
-            'to_country_code': shipment.get('destination').get('country_code'),
-            'to_postal_code': shipment.get('destination').get('zip_code'),
-            'to_city_locality': shipment.get('destination').get('city_locality'),
-            'to_state_province': shipment.get('destination').get('state_province'),
-            'weight': {
-                'value': shipment.get('total_weight'),
-                'unit': 'pound'
-            },
-            'dimensions': {
-                'unit': 'inch',
-                'length': shipment.get('length'),
-                'width': shipment.get('width'),
-                'height': shipment.get('height')
-            },
-        }
+        request = RateEstimateRequest(
+            shipment=shipment,
+            carrier_ids=carrier_ids)
+
+        data = request.to_dict()
 
         rates = await self._client.estimate_shipment(
             shipment=data)
 
+        # Cache the estimate for 60 seconds
+        asyncio.create_task(
+            self._cache_client.set_json(
+                key=cache_key,
+                value=rates,
+                ttl=60
+            )
+        )
+
         return rates
 
+    @deprecated
     async def get_rates(
         self,
-        shipment: Dict
-    ) -> Dict:
+        shipment: dict
+    ) -> dict:
         logger.info('Get shipment rates')
 
         # TODO: Just cache the IDs here instead of the entire carrier list?
@@ -112,7 +117,7 @@ class RateService:
         rate_details = rate_response.get('rates')
 
         carrier_rate_errors = {
-            error.get('carrier_id'): self.to_rate_error(error)
+            error.get('carrier_id'): to_rate_error(error)
             for error in rate_response.get('errors')
         }
 
@@ -134,17 +139,6 @@ class RateService:
         return {
             'quotes': carrier_rates,
             'errors': carrier_rate_errors
-        }
-
-    def to_rate_error(
-        self,
-        error: Dict
-    ) -> Dict:
-        return {
-            "error_code": error.get('error_code'),
-            "error_source": error.get('error_source'),
-            "error_type": error.get('error_type'),
-            "message": error.get('message')
         }
 
     async def _get_carriers(
