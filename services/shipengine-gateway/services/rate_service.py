@@ -80,32 +80,6 @@ class RateService:
 
         return rates
 
-        # model = ShipmentRate().from_json(
-        #     data=shipment)
-        # model.validate()
-
-        # rate_request = model.to_shipment_json()
-        # rates = await self.__client.get_rates(
-        #     shipment=rate_request)
-
-        # rate_response = rates.get('rate_response')
-        # rate_details = rate_response.get('rates')
-
-        # carrier_rate_errors = {
-        #     error.get('carrier_id'): self.to_rate_error(error)
-        #     for error in rate_response.get('errors')
-        # }
-
-        # results = [
-        #     Rate(rate, carrier_rate_errors).to_rate()
-        #     for rate in rate_details
-        # ]
-
-        # return {
-        #     'quotes': results,
-        #     'errors': carrier_rate_errors
-        # }
-
     async def get_rates(
         self,
         shipment: Dict
@@ -131,7 +105,7 @@ class RateService:
         model.validate()
 
         rate_request = model.to_shipment_json()
-        rates = await self.__client.get_rates(
+        rates = await self._client.get_rates(
             shipment=rate_request)
 
         rate_response = rates.get('rate_response')
