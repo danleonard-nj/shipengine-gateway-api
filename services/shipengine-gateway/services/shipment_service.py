@@ -54,8 +54,17 @@ class ShipmentService:
 
         ArgumentNullException.if_none_or_whitespace(shipment_id, 'shipment_id')
 
-        await self._shipengine_client.cancel_shipment(
+        success = await self._shipengine_client.cancel_shipment(
             shipment_id=shipment_id)
+
+        if not success:
+            raise Exception(f'Failed to cancel shipment')
+
+        # Update the shipment status in the database
+        await self._repository.update(
+            selector={'shipment_id': shipment_id},
+            values={'shipment_status': 'Canceled'}
+        )
 
         return {
             'deleted': True
@@ -198,7 +207,9 @@ class ShipmentService:
 
         total_pages = response.get('pages', 1)
         total_fetched_shipments = response.get('total', 0)
-        fetched_shipments = response.get('shipments', [])
+
+        logger.info(f'Total fetched shipments: {total_fetched_shipments}')
+        logger.info(f'All existing shipment count: {all_existing_shipment_count}')
 
         if (total_fetched_shipments != all_existing_shipment_count
                 or await self.is_last_sync_over_one_hour_ago()):
@@ -271,6 +282,8 @@ class ShipmentService:
             service_code_mapping=service_code_mapping,
             carrier_mapping=carrier_mapping)
 
+        await self._repository.insert(created_shipment.to_entity())
+
         return {
             'shipment_id': created_shipment.shipment_id
         }
@@ -279,6 +292,8 @@ class ShipmentService:
         self,
         data: Dict
     ) -> Dict:
+        raise NotImplementedError('Update shipment is not implemented')
+
         shipment = CreateShipment(
             data=data)
 
