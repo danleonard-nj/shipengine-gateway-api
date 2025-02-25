@@ -186,7 +186,10 @@ class ShipmentService:
         page_number = int(request.page_number)
         cancelled = request.cancelled
 
-        existing_shipment_count = await self._repository.get_shipments_count()
+        # Get all shipment count for comparison to response count
+        all_existing_shipment_count = await self._repository.get_shipments_count(
+            cancelled=True
+        )
 
         # Fetch the first page to get the total number of pages
         response = await self._shipengine_client.get_shipments(
@@ -197,8 +200,7 @@ class ShipmentService:
         total_fetched_shipments = response.get('total', 0)
         fetched_shipments = response.get('shipments', [])
 
-        total_shipment_count = existing_shipment_count
-        if (total_fetched_shipments != existing_shipment_count
+        if (total_fetched_shipments != all_existing_shipment_count
                 or await self.is_last_sync_over_one_hour_ago()):
             logger.info('Syncing shipments to the database')
             total_shipment_count = await self.sync_shipments()
@@ -218,8 +220,11 @@ class ShipmentService:
             carrier_mapping=carrier_mapping)
             for shipment in shipments]
 
-        # Get the total number of pages by dividing the document count by the page size
-        total_pages = len(fetched_shipments) // page_size + (1 if len(fetched_shipments) % page_size > 0 else 0)
+        total_shipment_count = await self._repository.get_shipments_count(
+            cancelled=cancelled
+        )
+
+        total_pages = total_shipment_count // page_size + (total_shipment_count % page_size > 0)
 
         return {
             'shipments': [shipment.to_dict() for shipment in parsed],

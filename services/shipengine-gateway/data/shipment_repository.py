@@ -35,8 +35,13 @@ class ShipmentRepository(MongoRepositoryAsync):
         result = await self.collection.insert_many(shipments)
         return result.inserted_ids
 
-    async def get_shipments_count(self) -> int:
-        return await self.collection.count_documents({})
+    async def get_shipments_count(
+        self,
+        cancelled: bool = False
+    ) -> int:
+        return await self.collection.count_documents({
+            'shipment_status': {'$ne': 'Canceled'}
+        } if not cancelled else {})
 
     async def get_all_shipments(
         self
