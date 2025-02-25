@@ -201,7 +201,8 @@ class Shipment(ValidatableDataclass, Serializable):
     destination: ShipmentAddress
     shipment_status: str
     total_weight: float
-    sync_date: Union[str, datetime]
+    # Sync date can be empty (i.e. when shipment is created from response)
+    sync_date: Optional[Union[str, datetime]]
     # Mapped on post init
     carrier_name: Optional[str] = ""         # Computed field, defaults to empty
     service_code_name: Optional[str] = ""    # Computed field, defaults to empty
