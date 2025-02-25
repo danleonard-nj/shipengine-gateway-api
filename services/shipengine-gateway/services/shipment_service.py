@@ -19,6 +19,11 @@ from utilities.utils import first_or_default
 logger = get_logger(__name__)
 
 
+def hash_shipment(shipment):
+    j = json.dumps(shipment, sort_keys=True, default=str)
+    return sha256(j)
+
+
 class ShipmentService:
     def __init__(
         self,
@@ -98,11 +103,12 @@ class ShipmentService:
         existing_shipments = await self._repository.get_all()
 
         # The 'shipment_id' property on the ShipEngine model is named 'id' in the database
-        existing_shipments_dict = {
-            shipment['id']: shipment
-            for shipment
-            in existing_shipments
-        }
+        existing_shipments_dict = {}
+        for shipment in existing_shipments:
+            if 'shipment_id' in shipment:
+                existing_shipments_dict[shipment['shipment_id']] = shipment
+            else:
+                logger.info(f'missing shipment ID: {shipment}')
 
         # Prepare mappings
         service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
@@ -113,10 +119,6 @@ class ShipmentService:
         updated_shipments = []
         removed_shipments = []
 
-        def hash_shipment(shipment):
-            j = json.dumps(shipment, sort_keys=True, default=str)
-            return sha256(j)
-
         # Process fetched shipments
         for shipment in fetched_shipments:
             shipment_id = shipment['shipment_id']
@@ -124,7 +126,7 @@ class ShipmentService:
                 # Update existing shipment (remove it from the dict to track removes later)
                 existing_shipment = existing_shipments_dict.pop(shipment_id)
 
-                existing = Shipment.from_data(
+                existing = Shipment.from_entity(
                     data=existing_shipment,
                     service_code_mapping=service_code_mapping,
                     carrier_mapping=carrier_mapping)
@@ -168,11 +170,7 @@ class ShipmentService:
 
         logger.info(f'Sync complete: {len(added_shipments)} added, {len(updated_shipments)} updated, {len(removed_shipments)} removed')
 
-        return {
-            'added': len(added_shipments),
-            'updated': len(updated_shipments),
-            'removed': len(removed_shipments)
-        }
+        return len(fetched_shipments)
 
     async def get_shipments(
         self,
@@ -182,20 +180,30 @@ class ShipmentService:
 
         page_size = int(request.page_size)
         page_number = int(request.page_number)
+        cancelled = request.cancelled
 
-        is_sync_required = await self.is_last_sync_over_one_hour_ago()
+        existing_shipment_count = await self._repository.get_shipments_count()
 
-        if is_sync_required:
+        # Fetch the first page to get the total number of pages
+        response = await self._shipengine_client.get_shipments(
+            page_number=1,
+            page_size=page_size)
+
+        total_pages = response.get('pages', 1)
+        total_fetched_shipments = response.get('total', 0)
+        fetched_shipments = response.get('shipments', [])
+
+        total_shipment_count = existing_shipment_count
+        if (total_fetched_shipments != existing_shipment_count
+                or await self.is_last_sync_over_one_hour_ago()):
             logger.info('Syncing shipments to the database')
-            await self.sync_shipments()
+            total_shipment_count = await self.sync_shipments()
 
         # Fetch shipments and document count from the database
-        shipments, total_shipment_count = await TaskCollection(
-            self._repository.get_shipments(
-                page_size=page_size,
-                page_number=page_number),
-            self._repository.get_shipments_count()
-        ).run()
+        shipments = await self._repository.get_shipments(
+            page_size=page_size,
+            page_number=page_number,
+            cancelled=cancelled)
 
         service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
         carrier_mapping = await self._mapper_service.get_carrier_mapping()
@@ -207,7 +215,7 @@ class ShipmentService:
             for shipment in shipments]
 
         # Get the total number of pages by dividing the document count by the page size
-        total_pages = total_shipment_count // page_size + (1 if total_shipment_count % page_size > 0 else 0)
+        total_pages = len(fetched_shipments) // page_size + (1 if len(fetched_shipments) % page_size > 0 else 0)
 
         return {
             'shipments': [shipment.to_dict() for shipment in parsed],
@@ -234,9 +242,14 @@ class ShipmentService:
         if not created:
             raise Exception('No response content returned from client')
 
+        service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
+        carrier_mapping = await self._mapper_service.get_carrier_mapping()
+
         logger.info('Parsing created shipment model')
-        created_shipment = Shipment(
-            data=created)
+        created_shipment = Shipment.from_data(
+            data=created,
+            service_code_mapping=service_code_mapping,
+            carrier_mapping=carrier_mapping)
 
         return {
             'shipment_id': created_shipment.shipment_id

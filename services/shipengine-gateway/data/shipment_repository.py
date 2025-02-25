@@ -15,13 +15,14 @@ class ShipmentRepository(MongoRepositoryAsync):
     async def get_shipments(
         self,
         page_size: int,
-        page_number: int
+        page_number: int,
+        cancelled: bool = False
     ):
         skip_count = (page_number - 1) * page_size  # Calculate how many documents to skip
 
         return await (
             self.collection
-            .find()
+            .find({'shipment_status': {'$ne': 'Canceled'}} if not cancelled else {})
             .skip(skip_count)
             .limit(page_size)
             .to_list(length=None)
