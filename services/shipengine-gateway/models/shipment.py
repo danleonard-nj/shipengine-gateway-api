@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 from deprecated import deprecated
@@ -337,7 +337,7 @@ class Shipment(Serializable):
             'destination': self.destination.to_json(),
             'shipment_status': self.shipment_status,
             'total_weight': self.total_weight,
-            'sync_date': datetime.now()
+            'sync_date': datetime.now(timezone.utc)
         }
 
 

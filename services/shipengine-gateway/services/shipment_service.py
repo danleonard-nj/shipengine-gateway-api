@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict
 
 from clients.shipengine_client import ShipEngineClient
@@ -81,7 +81,9 @@ class ShipmentService:
         if isinstance(last_sync_date, str):
             last_sync_date = datetime.fromisoformat(last_sync_date)
 
-        one_hour_ago = datetime.now() - timedelta(hours=1)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+        logger.info(f'Last sync date: {last_sync_date}, One hour ago: {one_hour_ago}')
+        logger.info(f'Current time: {datetime.now(timezone.utc)}')
         return last_sync_date < one_hour_ago
 
     async def sync_shipments(
