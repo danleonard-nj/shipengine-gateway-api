@@ -13,7 +13,9 @@ from framework.logger.providers import get_logger
 from framework.serialization.utilities import serialize
 from models.requests import GetShipmentRequest
 from models.shipment import CreateShipment, Shipment
+from services.carrier_service import CarrierService
 from services.mapper_service import MapperService
+from framework.validators.nulls import none_or_whitespace
 from utilities.utils import first_or_default
 
 logger = get_logger(__name__)
@@ -30,6 +32,7 @@ class ShipmentService:
         mapper_service: MapperService,
         shipengine_client: ShipEngineClient,
         shipment_repository: ShipmentRepository,
+        carrier_service: CarrierService,
         cache_client: CacheClientAsync
     ):
         ArgumentNullException.if_none(mapper_service, 'mapper_service')
@@ -39,8 +42,9 @@ class ShipmentService:
 
         self._mapper_service = mapper_service
         self._shipengine_client = shipengine_client
+        self._carrier_service = carrier_service
         self._repository = shipment_repository
-        self.__cache_client = cache_client
+        self._cache_client = cache_client
 
     async def cancel_shipment(
         self,
@@ -228,8 +232,19 @@ class ShipmentService:
         self,
         data: Dict
     ) -> Dict:
-        shipment = CreateShipment(
-            data=data)
+
+        carrier_ids = await self._carrier_service.get_carrier_ids()
+
+        shipment = CreateShipment(data=data)
+
+        if none_or_whitespace(shipment.carrier_id):
+            raise Exception('Carrier ID cannot be null or empty')
+
+        if none_or_whitespace(shipment.service_code):
+            raise Exception('Service code cannot be null or empty')
+
+        if shipment.carrier_id not in carrier_ids:
+            raise Exception(f'Carrier ID {shipment.carrier_id} is not supported')
 
         shipment_data = shipment.to_json()
 

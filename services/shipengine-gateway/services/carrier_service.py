@@ -20,13 +20,13 @@ class CarrierService:
         cache_client: CacheClientAsync
     ):
         self.__client = shipengine_client
-        self.__cache_client = cache_client
+        self._cache_client = cache_client
 
     async def get_carrier_models(
         self
     ) -> List[Carrier]:
         logger.info('Parsing carrier models from carrier repsonse')
-        carriers = await self.__get_carriers()
+        carriers = await self._get_carriers()
 
         return [
             Carrier(data=carrier)
@@ -38,7 +38,7 @@ class CarrierService:
     ) -> Dict:
         logger.info('Get carrier list from ShipEngine')
 
-        carriers = await self.__get_carriers()
+        carriers = await self._get_carriers()
 
         models = [
             Carrier(data=carrier)
@@ -46,6 +46,20 @@ class CarrierService:
         ]
 
         return [model.to_json() for model in models]
+
+    async def get_carrier_ids(
+        self
+    ) -> Dict:
+        logger.info('Get carrier list from ShipEngine')
+
+        carriers = await self._get_carriers()
+
+        models = [
+            Carrier(data=carrier)
+            for carrier in carriers
+        ]
+
+        return [model.carrier_id for model in models]
 
     async def get_service_codes(
         self
@@ -64,7 +78,7 @@ class CarrierService:
 
         key = CacheKey.get_carrier_service_codes()
 
-        cached_codes = await self.__cache_client.get_json(
+        cached_codes = await self._cache_client.get_json(
             key=key)
 
         if cached_codes is not None:
@@ -74,7 +88,7 @@ class CarrierService:
 
         service_codes = await self.__parse_carrier_service_codes()
 
-        asyncio.create_task(self.__cache_client.set_json(
+        asyncio.create_task(self._cache_client.set_json(
             key=key,
             value=service_codes,
             ttl=60
@@ -83,7 +97,7 @@ class CarrierService:
     async def __parse_carrier_service_codes(
         self
     ):
-        carriers = await self.__get_carriers()
+        carriers = await self._get_carriers()
 
         results = []
         for carrier in carriers:
@@ -136,10 +150,10 @@ class CarrierService:
             'balances': results
         }
 
-    async def __get_carriers(
+    async def _get_carriers(
         self
     ) -> List[Dict]:
-        cached_carriers = await self.__cache_client.get_json(
+        cached_carriers = await self._cache_client.get_json(
             key=CacheKey.CARRIER_LIST)
 
         if cached_carriers is not None:
@@ -150,7 +164,7 @@ class CarrierService:
         response = await self.__client.get_carriers()
         carriers = response.get('carriers')
 
-        await self.__cache_client.set_json(
+        await self._cache_client.set_json(
             key=CacheKey.CARRIER_LIST,
             value=carriers,
             ttl=60 * 24 * 7)

@@ -343,6 +343,7 @@ class Shipment(Serializable):
 
 class CreateShipment(Serializable):
     def __init__(self, data):
+        self.carrier_id = data.get('carrier_id')
         self.shipper_id = data.get('shipper_id')
         self.origin = data.get('origin')
         self.destination = data.get('destination')
@@ -374,6 +375,7 @@ class CreateShipment(Serializable):
         })
 
         model = {
+            'carrier_id': self.carrier_id,
             'service_code': self.service_code,
             'ship_from': origin.to_shipengine_address(),
             'ship_to': destination.to_shipengine_address(),
