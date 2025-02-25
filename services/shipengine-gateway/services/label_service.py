@@ -9,7 +9,6 @@ from domain.exceptions import ShipmentLabelException, ShipmentNotFoundException
 from framework.clients.cache_client import CacheClientAsync
 from framework.exceptions.nulls import ArgumentNullException
 from framework.logger.providers import get_logger
-from framework.serialization.utilities import serialize
 from models.label import Label
 from utilities.utils import first_or_default
 
@@ -64,8 +63,6 @@ class LabelService:
             update_response = await self._client.update_shipment(
                 shipment_id=shipment_id,
                 data=shipment)
-
-            logger.info(f'Update response: {serialize(update_response)}')
 
         # Create the shipment label
         label = await self._client.create_label(

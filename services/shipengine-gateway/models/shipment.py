@@ -1,14 +1,12 @@
 from dataclasses import dataclass
-from typing import List, Union, Dict, Optional
-from typing import Any, Dict
-from dataclasses import dataclass, fields
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Union, get_args, get_origin
+from typing import Any, Dict, List, Optional, Union
 
+from click import Option
 from framework.logger.providers import get_logger
 from framework.serialization import Serializable
 from models.carrier import Carrier
-from models.mapping import mapped_value, shipment_status_mapping
+from models.mapping import shipment_status_mapping
 from utilities.utils import ValidatableDataclass
 
 logger = get_logger(__name__)
@@ -182,10 +180,6 @@ def parse_packages(package_data):
     ]
 
 
-# Assuming these are defined elsewhere:
-# from your_module import Serializable, ShipmentPackage, ShipmentAddress, Carrier, parse_packages, mapped_value, shipment_status_mapping, logger
-
-
 @dataclass
 class Shipment(ValidatableDataclass, Serializable):
     shipment_id: str
@@ -296,8 +290,10 @@ class Shipment(ValidatableDataclass, Serializable):
 
         service_code_name = (cls._get_mapped_service_code(service_code, service_code_mapping)
                              if service_code_mapping else "")
-        carrier_name = (cls._get_mapped_carrier(carrier_id, carrier_mapping)
-                        if carrier_mapping else "")
+
+        carrier_name = carrier_mapping.get(carrier_id, 'n/a') if carrier_mapping else 'n/a'
+        # carrier_name = (cls._get_mapped_carrier(carrier_id, carrier_mapping)
+        #                 if carrier_mapping else "")
 
         return Shipment(
             shipment_id=shipment_id,
@@ -340,7 +336,7 @@ class Shipment(ValidatableDataclass, Serializable):
     def to_dict(self) -> Dict:
         # If carrier_name is a Carrier instance, get its 'carrier' attribute; otherwise use it directly.
         carrier_name_value = (
-            self.carrier_name.carrier if isinstance(self.carrier_name, Carrier)
+            self.carrier_name.name if isinstance(self.carrier_name, Carrier)
             else self.carrier_name
         )
         return {
@@ -383,33 +379,41 @@ class Shipment(ValidatableDataclass, Serializable):
         }
 
 
-class CreateShipment(Serializable):
-    def __init__(self, data):
-        self.carrier_id = data.get('carrier_id')
-        self.shipper_id = data.get('shipper_id')
-        self.origin = data.get('origin')
-        self.destination = data.get('destination')
-        self.dimensions = data.get('dimensions')
-        self.weight = data.get('weight')
-        self.insured_value = data.get('insured_value')
-        self.service_code = data.get('service_code')
-        self.insurance_provider = data.get('insurance_provider')
+@dataclass
+class CreateShipment(ValidatableDataclass, Serializable):
+    carrier_id: str
+    shipper_id: Optional[str]
+    origin: ShipmentAddress
+    destination: ShipmentAddress
+    dimensions: ShipmentPackage
+    weight: ShipmentPackage
+    insured_value: ShipmentPackage
+    service_code: str
+    insurance_provider: Optional[str]
 
-    def to_dict(self):
-        origin = ShipmentAddress.from_data(
-            data=self.origin)
-        destination = ShipmentAddress.from_data(
-            data=self.destination)
+    @staticmethod
+    def from_data(data: dict[str, Any]) -> "CreateShipment":
+        return CreateShipment(
+            carrier_id=data.get('carrier_id'),
+            shipper_id=data.get('shipper_id'),
+            origin=data.get('origin'),
+            destination=data.get('destination'),
+            dimensions=data.get('dimensions'),
+            weight=data.get('weight'),
+            insured_value=data.get('insured_value'),
+            service_code=data.get('service_code'),
+            insurance_provider=data.get('insurance_provider')
+        )
+
+    def to_dict(self) -> dict:
+        origin = ShipmentAddress.from_data(data=self.origin)
+        destination = ShipmentAddress.from_data(data=self.destination)
 
         # TODO: Simplify the mapping here
         package = ShipmentPackage.from_data({
             'dimensions': self.dimensions,
-            'insured_value': {
-                'amount': self.insured_value
-            },
-            'weight': {
-                'value': self.weight
-            }
+            'insured_value': {'amount': self.insured_value},
+            'weight': {'value': self.weight}
         })
 
         model = {
@@ -421,47 +425,9 @@ class CreateShipment(Serializable):
             'packages': [package.to_shipengine_package()]
         }
 
-        result = {
-            'shipments': [model]
-        }
+        result = {'shipments': [model]}
 
         logger.info('Shipment create model')
         logger.info(result)
 
         return result
-
-    # @deprecated
-    # def to_json(self):
-    #     origin = ShipmentAddress(
-    #         data=self.origin)
-    #     destination = ShipmentAddress(
-    #         data=self.destination)
-
-    #     # TODO: Simplify the mapping here
-    #     package = ShipmentPackage.from_data({
-    #         'dimensions': self.dimensions,
-    #         'insured_value': {
-    #             'amount': self.insured_value
-    #         },
-    #         'weight': {
-    #             'value': self.weight
-    #         }
-    #     })
-
-    #     model = {
-    #         'carrier_id': self.carrier_id,
-    #         'service_code': self.service_code,
-    #         'ship_from': origin.to_shipengine_address(),
-    #         'ship_to': destination.to_shipengine_address(),
-    #         'insurance_provider': self.insurance_provider,
-    #         'packages': [package.to_shipengine_package()]
-    #     }
-
-    #     result = {
-    #         'shipments': [model]
-    #     }
-
-    #     logger.info('Shipment create model')
-    #     logger.info(result)
-
-    #     return result

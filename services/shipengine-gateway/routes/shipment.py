@@ -1,6 +1,5 @@
 from framework.logger.providers import get_logger
 from framework.rest.blueprints.meta import MetaBlueprint
-from framework.serialization.utilities import serialize
 from models.requests import GetShipmentRequest
 from quart import request
 from services.shipment_service import ShipmentService
@@ -46,7 +45,6 @@ async def post_shipment(container):
     if not _content:
         raise Exception('Request body cannot be null')
 
-    logger.info(f'Create shipment: {serialize(_content)}')
     result = await shipment_service.create_shipment(
         data=_content)
 

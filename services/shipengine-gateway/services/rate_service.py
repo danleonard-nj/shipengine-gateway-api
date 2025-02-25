@@ -3,11 +3,9 @@ from typing import Optional
 
 from clients.shipengine_client import ShipEngineClient
 from constants.cache import CacheKey
-from deprecated import deprecated
 from framework.clients.cache_client import CacheClientAsync
 from framework.exceptions.nulls import ArgumentNullException
 from framework.logger.providers import get_logger
-from models.rate import Rate, ShipmentRate
 from models.requests import RateEstimateRequest
 from services.carrier_service import CarrierService
 
@@ -84,62 +82,62 @@ class RateService:
 
         return rates
 
-    @deprecated
-    async def get_rates(
-        self,
-        shipment: dict
-    ) -> dict:
-        logger.info('Get shipment rates')
+    # @deprecated
+    # async def get_rates(
+    #     self,
+    #     shipment: dict
+    # ) -> dict:
+    #     logger.info('Get shipment rates')
 
-        # TODO: Just cache the IDs here instead of the entire carrier list?
-        logger.info('Fetching carrier list')
-        carriers = await self._get_carriers()
+    #     # TODO: Just cache the IDs here instead of the entire carrier list?
+    #     logger.info('Fetching carrier list')
+    #     carriers = await self._get_carriers()
 
-        # Get a list of all distinct carrier IDs to get
-        # quotes for
-        carrier_ids = [
-            x.get('carrier_id')
-            for x in carriers
-        ]
+    #     # Get a list of all distinct carrier IDs to get
+    #     # quotes for
+    #     carrier_ids = [
+    #         x.get('carrier_id')
+    #         for x in carriers
+    #     ]
 
-        logger.info(f'Carrier IDs to run rate against: {carrier_ids}')
+    #     logger.info(f'Carrier IDs to run rate against: {carrier_ids}')
 
-        model = ShipmentRate().from_json(
-            data=shipment,
-            carrier_ids=carrier_ids)
-        model.validate()
+    #     model = ShipmentRate().from_json(
+    #         data=shipment,
+    #         carrier_ids=carrier_ids)
+    #     model.validate()
 
-        rate_request = model.to_shipment_json()
-        rates = await self._client.get_rates(
-            shipment=rate_request)
+    #     rate_request = model.to_shipment_json()
+    #     rates = await self._client.get_rates(
+    #         shipment=rate_request)
 
-        rate_response = rates.get('rate_response')
-        rate_details = rate_response.get('rates')
+    #     rate_response = rates.get('rate_response')
+    #     rate_details = rate_response.get('rates')
 
-        carrier_rate_errors = {
-            error.get('carrier_id'): to_rate_error(error)
-            for error in rate_response.get('errors')
-        }
+    #     carrier_rate_errors = {
+    #         error.get('carrier_id'): to_rate_error(error)
+    #         for error in rate_response.get('errors')
+    #     }
 
-        results = [
-            Rate(rate, carrier_rate_errors).to_rate()
-            for rate in rate_details
-        ]
+    #     results = [
+    #         Rate(rate, carrier_rate_errors).to_rate()
+    #         for rate in rate_details
+    #     ]
 
-        carrier_rates = {}
-        for rate in results:
-            carrier_id = rate.get('carrier').get('carrier_id')
-            if carrier_rates.get(carrier_id) is None:
-                carrier_rates[carrier_id] = []
+    #     carrier_rates = {}
+    #     for rate in results:
+    #         carrier_id = rate.get('carrier').get('carrier_id')
+    #         if carrier_rates.get(carrier_id) is None:
+    #             carrier_rates[carrier_id] = []
 
-            carrier_rate = carrier_rates[carrier_id]
-            carrier_rate.append(rate)
-            carrier_rates[carrier_id] = carrier_rate
+    #         carrier_rate = carrier_rates[carrier_id]
+    #         carrier_rate.append(rate)
+    #         carrier_rates[carrier_id] = carrier_rate
 
-        return {
-            'quotes': carrier_rates,
-            'errors': carrier_rate_errors
-        }
+    #     return {
+    #         'quotes': carrier_rates,
+    #         'errors': carrier_rate_errors
+    #     }
 
     async def _get_carriers(
         self

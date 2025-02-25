@@ -3,8 +3,6 @@ from framework.crypto.hashing import sha256
 
 
 class CacheKey:
-    CARRIER_LIST = 'shipengine-carrier-list'
-
     @staticmethod
     def get_carrier_list():
         return 'shipengine-carrier-list'

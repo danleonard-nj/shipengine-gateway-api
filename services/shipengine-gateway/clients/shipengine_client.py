@@ -3,7 +3,6 @@ from typing import Dict
 from framework.configuration.configuration import Configuration
 from framework.exceptions.nulls import ArgumentNullException
 from framework.logger.providers import get_logger
-from framework.serialization.utilities import serialize
 from framework.utilities.url_utils import build_url
 from httpx import AsyncClient
 
@@ -46,7 +45,6 @@ class ShipEngineClient:
 
         content = response.json()
         logger.info(f'Response status: {response.status_code}')
-        logger.info(f'Response: {serialize(content)}')
 
         return content
 
@@ -111,7 +109,6 @@ class ShipEngineClient:
         content = response.json()
 
         logger.info(f'Create shipment status: {response.status_code}')
-        logger.info(f'Create shipment response: {serialize(content)}')
 
         return content
 
@@ -150,7 +147,6 @@ class ShipEngineClient:
         content = response.json()
 
         logger.info(f'Get carriers status: {response.status_code}')
-        # logger.info(f'Response: {serialize(content)}')
 
         return content
 
@@ -186,32 +182,31 @@ class ShipEngineClient:
 
         content = response.json()
         logger.info(f'Response status: {response.status_code}')
-        logger.info(f'Response: {serialize(content)}')
 
         return content or dict()
 
-    async def get_rates(
-        self,
-        shipment: Dict
-    ) -> Dict:
-        ArgumentNullException.if_none(shipment, 'shipment')
+    # async def get_rates(
+    #     self,
+    #     shipment: Dict
+    # ) -> Dict:
+    #     ArgumentNullException.if_none(shipment, 'shipment')
 
-        logger.info('Get rates for shipment')
+    #     logger.info('Get rates for shipment')
 
-        # TODO: Switch to estimate route /api/rates/estimate to avoid creating
-        # a new shipment every time
-        response = await self._http_client.post(
-            url=f'{self._base_url}/rates',
-            json=shipment,
-            headers=self._get_headers(),
-            timeout=None)
+    #     # TODO: Switch to estimate route /api/rates/estimate to avoid creating
+    #     # a new shipment every time
+    #     response = await self._http_client.post(
+    #         url=f'{self._base_url}/rates',
+    #         json=shipment,
+    #         headers=self._get_headers(),
+    #         timeout=None)
 
-        content = response.json()
+    #     content = response.json()
 
-        logger.info(f'Get shipment rates status: {response.status_code}')
-        logger.info(f'Get shipment rates response: {content}')
+    #     logger.info(f'Get shipment rates status: {response.status_code}')
+    #     logger.info(f'Get shipment rates response: {content}')
 
-        return content
+    #     return content
 
     async def estimate_shipment(
         self,
@@ -230,6 +225,5 @@ class ShipEngineClient:
         content = response.json()
 
         logger.info(f'Estimate shipment status: {response.status_code}')
-        logger.info(f'Estimate shipment response: {content}')
 
         return content

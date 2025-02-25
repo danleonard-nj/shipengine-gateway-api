@@ -7,16 +7,16 @@ logger = get_logger(__name__)
 rates_bp = MetaBlueprint('rates_bp', __name__)
 
 
-@rates_bp.configure('/api/rates', methods=['POST'], auth_scheme='read')
-async def get_rates(container):
-    rate_service: RateService = container.resolve(
-        RateService)
+# @rates_bp.configure('/api/rates', methods=['POST'], auth_scheme='read')
+# async def get_rates(container):
+#     rate_service: RateService = container.resolve(
+#         RateService)
 
-    data = await request.get_json()
-    response = await rate_service.get_rates(
-        shipment=data)
+#     data = await request.get_json()
+#     response = await rate_service.get_rates(
+#         shipment=data)
 
-    return response
+#     return response
 
 
 @rates_bp.configure('/api/rates/estimate', methods=['POST'], auth_scheme='read')

@@ -10,12 +10,11 @@ from framework.concurrency import TaskCollection
 from framework.crypto.hashing import sha256
 from framework.exceptions.nulls import ArgumentNullException
 from framework.logger.providers import get_logger
-from framework.serialization.utilities import serialize
+from framework.validators.nulls import none_or_whitespace
 from models.requests import GetShipmentRequest
 from models.shipment import CreateShipment, Shipment
 from services.carrier_service import CarrierService
 from services.mapper_service import MapperService
-from framework.validators.nulls import none_or_whitespace
 from utilities.utils import first_or_default
 
 logger = get_logger(__name__)
@@ -242,11 +241,25 @@ class ShipmentService:
         service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
         carrier_mapping = await self._mapper_service.get_carrier_mapping()
 
-        parsed = [Shipment.from_entity(
-            data=shipment,
-            service_code_mapping=service_code_mapping,
-            carrier_mapping=carrier_mapping)
-            for shipment in shipments]
+        parsed = []
+        for shipment in shipments:
+            # Parse the shipment data
+            parsed_shipment = Shipment.from_entity(
+                data=shipment,
+                service_code_mapping=service_code_mapping,
+                carrier_mapping=carrier_mapping)
+
+            if parsed_shipment.carrier_name is None:
+                # If carrier name is None, skip this shipment
+                logger.info(f"Failed to map carrier name for carrier ID: '{parsed_shipment.carrier_id}' for shipment ID: '{parsed_shipment.shipment_id}'")
+
+            parsed.append(parsed_shipment)
+
+        # parsed = [Shipment.from_entity(
+        #     data=shipment,
+        #     service_code_mapping=service_code_mapping,
+        #     carrier_mapping=carrier_mapping)
+        #     for shipment in shipments]
 
         total_shipment_count = await self._repository.get_shipments_count(
             cancelled=cancelled
@@ -268,7 +281,7 @@ class ShipmentService:
 
         carrier_ids = await self._carrier_service.get_carrier_ids()
 
-        shipment = CreateShipment(data=data)
+        shipment = CreateShipment.from_data(data=data)
 
         if none_or_whitespace(shipment.carrier_id):
             raise Exception('Carrier ID cannot be null or empty')
@@ -285,7 +298,6 @@ class ShipmentService:
             data=shipment_data)
 
         created = first_or_default(result.get('shipments'))
-        logger.info(f'Response: {serialize(created)}')
 
         if not created:
             raise Exception('No response content returned from client')
@@ -300,34 +312,6 @@ class ShipmentService:
             carrier_mapping=carrier_mapping)
 
         await self._repository.insert(created_shipment.to_entity())
-
-        return {
-            'shipment_id': created_shipment.shipment_id
-        }
-
-    async def update_shipment(
-        self,
-        data: Dict
-    ) -> Dict:
-        raise NotImplementedError('Update shipment is not implemented')
-
-        shipment = CreateShipment(
-            data=data)
-
-        shipment_data = shipment.to_json()
-
-        result = await self._shipengine_client.create_shipment(
-            data=shipment_data)
-
-        created = first_or_default(result.get('shipments'))
-        logger.info(f'Response: {serialize(created)}')
-
-        if not created:
-            raise Exception('No response content returned from client')
-
-        logger.info('Parsing created shipment model')
-        created_shipment = Shipment(
-            data=created)
 
         return {
             'shipment_id': created_shipment.shipment_id
