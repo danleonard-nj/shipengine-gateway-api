@@ -78,8 +78,9 @@ class ShipmentService:
             return True
 
         last_sync_date = most_recent_shipment['sync_date']
-        if isinstance(last_sync_date, str):
-            last_sync_date = datetime.fromisoformat(last_sync_date)
+        # if isinstance(last_sync_date, str):
+        #     last_sync_date = datetime.fromisoformat(last_sync_date)
+        last_sync_date = last_sync_date.replace(tzinfo=timezone.utc)
 
         one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         logger.info(f'Last sync date: {last_sync_date}, One hour ago: {one_hour_ago}')
@@ -153,7 +154,10 @@ class ShipmentService:
 
                 # Check if the shipment has changed
                 if hash_shipment(existing.to_dict()) != hash_shipment(current.to_dict()):
-                    updated_shipments.append(current)
+                    logger.info(f'Updating shipment: {shipment_id} in the database')
+
+                current.sync_date = datetime.now(timezone.utc)
+                updated_shipments.append(current)
             else:
                 # Add new shipment
                 new = Shipment.from_data(
@@ -171,13 +175,23 @@ class ShipmentService:
             to_insert = [shipment.to_entity() for shipment in added_shipments]
             await self._repository.bulk_insert_shipments(to_insert)
 
+        semaphore = asyncio.Semaphore(10)
+
+        async def wrapped_update(shipment):
+            async with semaphore:
+                # Update the existing shipment in the database
+                await self._repository.update(
+                    selector=shipment.get_selector(),
+                    values=shipment.to_entity()
+                )
+
+        tasks = TaskCollection()
         for shipment in updated_shipments:
             logger.info(f'Updating shipment: {shipment.shipment_id} in the database')
             # Update the existing shipment in the database
-            await self._repository.update(
-                selector=shipment.get_selector(),
-                values=shipment.to_dict()
-            )
+            tasks.add_task(wrapped_update(shipment))
+
+        await tasks.run()
 
         for shipment in removed_shipments:
             # Delete the removed shipment from the database
