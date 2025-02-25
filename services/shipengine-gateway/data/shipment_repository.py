@@ -23,6 +23,7 @@ class ShipmentRepository(MongoRepositoryAsync):
         return await (
             self.collection
             .find({'shipment_status': {'$ne': 'Canceled'}} if not cancelled else {})
+            .sort('created_date', -1)  # Sort by sync_date in descending order
             .skip(skip_count)
             .limit(page_size)
             .to_list(length=None)
