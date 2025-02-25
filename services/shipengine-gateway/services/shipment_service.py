@@ -279,7 +279,7 @@ class ShipmentService:
         if shipment.carrier_id not in carrier_ids:
             raise Exception(f'Carrier ID {shipment.carrier_id} is not supported')
 
-        shipment_data = shipment.to_json()
+        shipment_data = shipment.to_dict()
 
         result = await self._shipengine_client.create_shipment(
             data=shipment_data)

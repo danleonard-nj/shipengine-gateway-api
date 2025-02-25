@@ -9,7 +9,7 @@ from utilities.provider import ContainerProvider
 
 class ConfigurationTests(unittest.TestCase):
     def setUp(self) -> None:
-        container = ContainerProvider.get_container()
+        container = ContainerProvider.get_service_provider()
         self.configuration = container.resolve(Configuration)
 
     def test_redis_configuration(self):

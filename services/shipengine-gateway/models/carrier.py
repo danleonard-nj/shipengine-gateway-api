@@ -40,10 +40,6 @@ class Carrier(Serializable):
     def to_dict(
         self
     ) -> Dict:
-        return self.to_json()
-
-    @deprecated
-    def to_json(self):
         return {
             'carrier_id': self.carrier_id,
             'carrier_code': self.carrier_code,

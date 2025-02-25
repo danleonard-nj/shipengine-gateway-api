@@ -19,9 +19,9 @@ class ShipEngineClient:
         # self.__http_client = HttpClient()
 
         self._http_client = http_client
-        self.__base_url = configuration.shipengine.get(
+        self._base_url = configuration.shipengine.get(
             'base_url')
-        self.__api_key = configuration.shipengine.get(
+        self._api_key = configuration.shipengine.get(
             'api_key')
 
     def _get_headers(
@@ -29,7 +29,7 @@ class ShipEngineClient:
     ) -> dict:
         return {
             'Content-Type': 'application/json',
-            'API-Key': self.__api_key
+            'API-Key': self._api_key
         }
 
     async def create_label(
@@ -41,7 +41,7 @@ class ShipEngineClient:
         logger.info(f'Create label for shipment: {shipment_id}')
 
         response = await self._http_client.post(
-            url=f'{self.__base_url}/labels/shipment/{shipment_id}',
+            url=f'{self._base_url}/labels/shipment/{shipment_id}',
             headers=self._get_headers())
 
         content = response.json()
@@ -59,7 +59,7 @@ class ShipEngineClient:
         logger.info(f'Get label for shipment: {shipment_id}')
 
         url = build_url(
-            base=f'{self.__base_url}/labels',
+            base=f'{self._base_url}/labels',
             shipment_id=shipment_id)
 
         logger.info(f'Get label endpoint: {url}')
@@ -79,7 +79,7 @@ class ShipEngineClient:
         logger.info('Get Shipments')
 
         url = build_url(
-            base=f'{self.__base_url}/shipments',
+            base=f'{self._base_url}/shipments',
             sort_by='created_at',
             sort_dir='desc',
             page=page_number,
@@ -104,7 +104,7 @@ class ShipEngineClient:
         logger.info(f'Create shipment request: {data}')
 
         response = await self._http_client.post(
-            url=f'{self.__base_url}/shipments',
+            url=f'{self._base_url}/shipments',
             headers=self._get_headers(),
             json=data)
 
@@ -126,7 +126,7 @@ class ShipEngineClient:
         logger.info(f'Update shipment: {shipment_id}')
 
         response = await self._http_client.put(
-            url=f'{self.__base_url}/shipments/{shipment_id}',
+            url=f'{self._base_url}/shipments/{shipment_id}',
             headers=self._get_headers(),
             json=data,
             timeout=None)
@@ -143,7 +143,7 @@ class ShipEngineClient:
         logger.info('Get carriers from client')
 
         response = await self._http_client.get(
-            url=f'{self.__base_url}/carriers',
+            url=f'{self._base_url}/carriers',
             headers=self._get_headers(),
             timeout=None)
 
@@ -163,7 +163,7 @@ class ShipEngineClient:
         logger.info(f'Attempting to cancel shipment: {shipment_id}')
 
         response = await self._http_client.put(
-            url=f'{self.__base_url}/shipments/{shipment_id}/cancel',
+            url=f'{self._base_url}/shipments/{shipment_id}/cancel',
             headers=self._get_headers(),
             timeout=None)
 
@@ -180,7 +180,7 @@ class ShipEngineClient:
         logger.info(f'Get shipment: {shipment_id}')
 
         response = await self._http_client.get(
-            url=f'{self.__base_url}/shipments/{shipment_id}',
+            url=f'{self._base_url}/shipments/{shipment_id}',
             headers=self._get_headers(),
             timeout=None)
 
@@ -201,7 +201,7 @@ class ShipEngineClient:
         # TODO: Switch to estimate route /api/rates/estimate to avoid creating
         # a new shipment every time
         response = await self._http_client.post(
-            url=f'{self.__base_url}/rates',
+            url=f'{self._base_url}/rates',
             json=shipment,
             headers=self._get_headers(),
             timeout=None)
@@ -222,7 +222,7 @@ class ShipEngineClient:
         logger.info('Estimate shipment')
 
         response = await self._http_client.post(
-            url=f'{self.__base_url}/rates/estimate',
+            url=f'{self._base_url}/rates/estimate',
             json=shipment,
             headers=self._get_headers(),
             timeout=None)

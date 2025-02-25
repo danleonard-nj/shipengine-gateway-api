@@ -17,3 +17,7 @@ class CacheKey:
     def get_estimate(shipment):
         hash_key = sha256(json.dumps(shipment, sort_keys=True))
         return f'shipengine-estimate-{hash_key}'
+
+    @staticmethod
+    def get_label(shipment_id):
+        return f'shipengine-label-shipment-id-{shipment_id}'

@@ -160,8 +160,8 @@ class ShipmentRate(FieldClass, Serializable):
         super().validate()
 
     def to_shipment_json(self):
-        origin = ShipmentAddress(self.origin)
-        destination = ShipmentAddress(self.destination)
+        origin = ShipmentAddress.from_data(data=self.origin)
+        destination = ShipmentAddress.from_data(data=self.destination)
 
         package = ShipmentPackage(
             length=self.length,
@@ -188,16 +188,9 @@ class ShipmentRate(FieldClass, Serializable):
     def to_dict(
         self
     ) -> Dict:
-        return self.to_json()
-
-    @deprecated
-    def to_json(self):
         result = {
             'shipments': [self.to_shipment_json()]
         }
-
-        logger.info('Shipment create model')
-        logger.info(serialize(result))
 
         return result
 
@@ -269,8 +262,8 @@ class CarrierRate(FieldClass, Serializable):
     def to_shipment_json(
         self
     ):
-        origin = ShipmentAddress(self.origin)
-        destination = ShipmentAddress(self.destination)
+        origin = ShipmentAddress.from_data(self.origin)
+        destination = ShipmentAddress.from_data(self.destination)
 
         package = ShipmentPackage(
             length=self.length,

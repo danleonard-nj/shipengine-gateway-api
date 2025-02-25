@@ -1,11 +1,10 @@
 import asyncio
 from typing import Dict, List
 
-from framework.clients.cache_client import CacheClientAsync
-from framework.logger.providers import get_logger
-
 from clients.shipengine_client import ShipEngineClient
 from constants.cache import CacheKey
+from framework.clients.cache_client import CacheClientAsync
+from framework.logger.providers import get_logger
 from models.carrier import Carrier, CarrierServiceModel
 
 logger = get_logger(__name__)
@@ -19,7 +18,7 @@ class CarrierService:
         shipengine_client: ShipEngineClient,
         cache_client: CacheClientAsync
     ):
-        self.__client = shipengine_client
+        self._client = shipengine_client
         self._cache_client = cache_client
 
     async def get_carrier_models(
@@ -45,7 +44,7 @@ class CarrierService:
             for carrier in carriers
         ]
 
-        return [model.to_json() for model in models]
+        return [model.to_dict() for model in models]
 
     async def get_carrier_ids(
         self
@@ -132,7 +131,7 @@ class CarrierService:
     ):
         logger.info('Get carrier balances')
 
-        response = await self.__client.get_carriers()
+        response = await self._client.get_carriers()
         carriers = response.get('carriers')
 
         results = []
@@ -161,7 +160,7 @@ class CarrierService:
             return cached_carriers
 
         logger.info(f'Fetching carriers from client')
-        response = await self.__client.get_carriers()
+        response = await self._client.get_carriers()
         carriers = response.get('carriers')
 
         await self._cache_client.set_json(
