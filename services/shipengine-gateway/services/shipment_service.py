@@ -165,8 +165,9 @@ class ShipmentService:
         removed_shipments = list(existing_shipments_dict.values())
 
         # Apply changes to the database
-        to_insert = [shipment.to_entity() for shipment in added_shipments]
-        await self._repository.bulk_insert_shipments(to_insert)
+        if any(to_insert):
+            to_insert = [shipment.to_entity() for shipment in added_shipments]
+            await self._repository.bulk_insert_shipments(to_insert)
 
         for shipment in updated_shipments:
             logger.info(f'Updating shipment: {shipment.shipment_id} in the database')
