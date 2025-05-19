@@ -48,6 +48,23 @@ class ShipEngineClient:
 
         return content
 
+    async def void_label(
+        self,
+        label_id: str
+    ):
+        # /v1/labels/{id}/void
+        ArgumentNullException.if_none_or_whitespace(label_id, 'label_id')
+
+        logger.info(f'Void label: {label_id}')
+
+        response = await self._http_client.put(
+            url=f'{self._base_url}/labels/{label_id}/void',
+            headers=self._get_headers())
+
+        logger.info(f'Response status: {response.status_code}')
+
+        return response.status_code
+
     async def get_label(
         self,
         shipment_id: str

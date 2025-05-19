@@ -133,3 +133,15 @@ class LabelService:
         )
 
         return data
+
+    async def void_label(
+        self,
+        label_id: str
+    ) -> int:
+        ArgumentNullException.if_none_or_whitespace(label_id, 'label_id')
+
+        logger.info(f'Void label: {label_id}')
+
+        # Void the label
+        return await self._client.void_label(
+            label_id=label_id)
