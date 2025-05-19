@@ -329,7 +329,7 @@ class ShipmentService:
         service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
         carrier_mapping = await self._mapper_service.get_carrier_mapping()
 
-        result = Shipment(
+        result = Shipment.from_data(
             data=shipment,
             service_code_mapping=service_code_mapping,
             carrier_mapping=carrier_mapping)

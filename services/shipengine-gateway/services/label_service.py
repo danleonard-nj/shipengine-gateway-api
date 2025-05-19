@@ -150,4 +150,8 @@ class LabelService:
             raise Exception(
                 f'Failed to void label: {response.status_code}: {response.text}')
 
+        await self._cache_client.delete_key(
+            key=CacheKey.get_label(label_id=label_id)
+        )
+
         return response.status_code
