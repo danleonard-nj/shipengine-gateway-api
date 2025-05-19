@@ -1,7 +1,6 @@
 import asyncio
 from typing import Optional
 
-from matplotlib.style import available
 
 from clients.shipengine_client import ShipEngineClient
 from constants.cache import CacheKey
@@ -11,17 +10,24 @@ from framework.logger.providers import get_logger
 from models.rate import convert_to_shipengine_rates_payload, transform_to_estimate_response_shape
 from models.requests import RateEstimateRequest
 from services.carrier_service import CarrierService
+from pydantic import BaseModel
 
 logger = get_logger(__name__)
 
 
 def to_rate_error(error: dict):
-    return {
-        "error_code": error.get('error_code'),
-        "error_source": error.get('error_source'),
-        "error_type": error.get('error_type'),
-        "message": error.get('message')
-    }
+    class RateError(BaseModel):
+        error_code: Optional[str]
+        error_source: Optional[str]
+        error_type: Optional[str]
+        message: Optional[str]
+
+    return RateError(
+        error_code=error.get('error_code'),
+        error_source=error.get('error_source'),
+        error_type=error.get('error_type'),
+        message=error.get('message')
+    ).model_dump()
 
 
 class RateService:
