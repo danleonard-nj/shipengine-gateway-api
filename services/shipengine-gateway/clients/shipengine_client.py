@@ -201,28 +201,32 @@ class ShipEngineClient:
 
         return content or dict()
 
-    # async def get_rates(
-    #     self,
-    #     shipment: Dict
-    # ) -> Dict:
-    #     ArgumentNullException.if_none(shipment, 'shipment')
+    async def get_rates(
+        self,
+        rate_request: Dict
+    ) -> Dict:
+        ArgumentNullException.if_none(rate_request, 'shipment')
 
-    #     logger.info('Get rates for shipment')
+        logger.info('Get rates for shipment')
 
-    #     # TODO: Switch to estimate route /api/rates/estimate to avoid creating
-    #     # a new shipment every time
-    #     response = await self._http_client.post(
-    #         url=f'{self._base_url}/rates',
-    #         json=shipment,
-    #         headers=self._get_headers(),
-    #         timeout=None)
+        url = f'{self._base_url}/rates'
 
-    #     content = response.json()
+        response = await self._http_client.post(
+            url=url,
+            headers=self._get_headers(),
+            json=rate_request,
+            timeout=None
+        )
 
-    #     logger.info(f'Get shipment rates status: {response.status_code}')
-    #     logger.info(f'Get shipment rates response: {content}')
+        logger.info(f'Response status: {response.status_code}')
 
-    #     return content
+        try:
+            content = response.json()
+        except Exception as e:
+            logger.exception(f'Error parsing JSON response from /v1/rates: {e}')
+            raise
+
+        return content or {}
 
     async def estimate_shipment(
         self,

@@ -1,11 +1,14 @@
 import asyncio
 from typing import Optional
 
+from matplotlib.style import available
+
 from clients.shipengine_client import ShipEngineClient
 from constants.cache import CacheKey
 from framework.clients.cache_client import CacheClientAsync
 from framework.exceptions.nulls import ArgumentNullException
 from framework.logger.providers import get_logger
+from models.rate import convert_to_shipengine_rates_payload, transform_to_estimate_response_shape
 from models.requests import RateEstimateRequest
 from services.carrier_service import CarrierService
 
@@ -82,62 +85,31 @@ class RateService:
 
         return rates
 
-    # @deprecated
-    # async def get_rates(
-    #     self,
-    #     shipment: dict
-    # ) -> dict:
-    #     logger.info('Get shipment rates')
+    async def get_rates(
+        self,
+        rate_request: dict
+    ) -> dict:
 
-    #     # TODO: Just cache the IDs here instead of the entire carrier list?
-    #     logger.info('Fetching carrier list')
-    #     carriers = await self._get_carriers()
+        available_carriers = await self._get_carriers()
+        available_carriers = [
+            carrier.get('carrier_id') for carrier in available_carriers
+        ]
 
-    #     # Get a list of all distinct carrier IDs to get
-    #     # quotes for
-    #     carrier_ids = [
-    #         x.get('carrier_id')
-    #         for x in carriers
-    #     ]
+        downstream_request = convert_to_shipengine_rates_payload(
+            raw=rate_request,
+            carrier_ids=available_carriers
+        )
 
-    #     logger.info(f'Carrier IDs to run rate against: {carrier_ids}')
+        rates = await self._client.get_rates(
+            rate_request=downstream_request.to_dict()
+        )
 
-    #     model = ShipmentRate().from_json(
-    #         data=shipment,
-    #         carrier_ids=carrier_ids)
-    #     model.validate()
+        # Keeping the shape the same as the one in the estimate for the frontend
+        result = transform_to_estimate_response_shape(
+            rate_response=rates
+        )
 
-    #     rate_request = model.to_shipment_json()
-    #     rates = await self._client.get_rates(
-    #         shipment=rate_request)
-
-    #     rate_response = rates.get('rate_response')
-    #     rate_details = rate_response.get('rates')
-
-    #     carrier_rate_errors = {
-    #         error.get('carrier_id'): to_rate_error(error)
-    #         for error in rate_response.get('errors')
-    #     }
-
-    #     results = [
-    #         Rate(rate, carrier_rate_errors).to_rate()
-    #         for rate in rate_details
-    #     ]
-
-    #     carrier_rates = {}
-    #     for rate in results:
-    #         carrier_id = rate.get('carrier').get('carrier_id')
-    #         if carrier_rates.get(carrier_id) is None:
-    #             carrier_rates[carrier_id] = []
-
-    #         carrier_rate = carrier_rates[carrier_id]
-    #         carrier_rate.append(rate)
-    #         carrier_rates[carrier_id] = carrier_rate
-
-    #     return {
-    #         'quotes': carrier_rates,
-    #         'errors': carrier_rate_errors
-    #     }
+        return result
 
     async def _get_carriers(
         self
