@@ -63,7 +63,7 @@ class ShipEngineClient:
 
         logger.info(f'Response status: {response.status_code}')
 
-        return response.status_code
+        return response
 
     async def get_label(
         self,

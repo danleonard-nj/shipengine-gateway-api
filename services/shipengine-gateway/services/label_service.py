@@ -143,5 +143,11 @@ class LabelService:
         logger.info(f'Void label: {label_id}')
 
         # Void the label
-        return await self._client.void_label(
+        response = await self._client.void_label(
             label_id=label_id)
+
+        if response.status_code != 200:
+            raise Exception(
+                f'Failed to void label: {response.status_code}: {response.text}')
+
+        return response.status_code

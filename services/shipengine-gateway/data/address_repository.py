@@ -18,7 +18,7 @@ class AddressRepository(MongoRepositoryAsync):
         page_number: int
     ):
         skip_count = (page_number - 1) * page_size
-        return await (
+        result = await (
             self.collection
             .find()
             .sort('created_date', -1)  # Sort by sync_date in descending order
@@ -26,6 +26,12 @@ class AddressRepository(MongoRepositoryAsync):
             .limit(page_size)
             .to_list(length=None)
         )
+
+        mod = []
+        for item in result:
+            item['_id'] = str(item['_id'])
+            mod.append(item)
+        return mod
 
     async def insert_address(
         self,
@@ -38,7 +44,7 @@ class AddressRepository(MongoRepositoryAsync):
         self,
         address_id: str
     ):
-        return await self.collection.find_one({'_id': address_id})
+        return await self.collection.find_one({'address_id': address_id})
 
     async def update_address(
         self,
@@ -54,6 +60,13 @@ class AddressRepository(MongoRepositoryAsync):
         self,
         address_id: str
     ):
+        # Set all other addresses to not default
+        await self.collection.update_many(
+            {'is_default': True},
+            {'$set': {'is_default': False}}
+        )
+
+        # Set the specified address to default
         result = await self.collection.update_one(
             {'_id': address_id},
             {'$set': {'is_default': True}}

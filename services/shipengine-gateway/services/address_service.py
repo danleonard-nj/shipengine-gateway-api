@@ -1,8 +1,36 @@
+import uuid
+from attr import dataclass
 from data.address_repository import AddressRepository
 from framework.logger.providers import get_logger
 from framework.configuration import Configuration
 import httpx
+from framework.serialization import Serializable
 logger = get_logger(__name__)
+
+
+@dataclass
+class AddressModel(Serializable):
+    address_id: str
+    name: str
+    street: str
+    city: str
+    state: str
+    postal_code: str
+    country: str
+    is_default: bool
+
+    @staticmethod
+    def from_dict(data: dict):
+        return AddressModel(
+            address_id=data.get('_id'),
+            name=data.get('name'),
+            street=data.get('street'),
+            city=data.get('city'),
+            state=data.get('state'),
+            postal_code=data.get('postal_code'),
+            country=data.get('country'),
+            is_default=data.get('is_default', False)
+        )
 
 
 class AddressService:
@@ -22,27 +50,43 @@ class AddressService:
     ):
         logger.info(f"Fetching addresses with page_size: {page_size}, page_number: {page_number}")
 
-        return await self._address_repository.get_addresses(
+        result = await self._address_repository.get_addresses(
             page_size=page_size,
             page_number=page_number
         )
+
+        if len([x for x in result if x.get('is_default')]) > 1:
+            raise Exception(f"Multiple addresses currently set to default: {[x.get('name') for x in result if x.get('is_default')]}")
+
+        return result
 
     async def insert_address(
         self,
         address: dict
     ):
-        if not address.get('name'):
+        name = address.get('name')
+        if not name:
             raise Exception("Address name is required")
 
         exists = await self._address_repository.get({
-            'name': address.get('name')}) is not None
+            'name': name}) is not None
 
         if exists:
-            raise Exception(f"Address with the name ' already exists")
+            raise Exception(f"Address with the name '{name} already exists")
 
-        return await self._address_repository.insert_address(
-            address=address
+        model = AddressModel.from_dict(address)
+        model.address_id = str(uuid.uuid4())
+
+        result = await self._address_repository.insert_address(
+            address=model.to_dict()
         )
+
+        if model.is_default:
+            logger.info(f"Setting address '{model.name}' as default")
+            await self.set_default_address(
+                address_id=model.address_id)
+
+        return model.to_dict()
 
     async def get_address(
         self,
@@ -67,6 +111,13 @@ class AddressService:
         self,
         address_id: str
     ):
+        address = await self._address_repository.get_address(
+            address_id=address_id
+        )
+
+        if not address:
+            raise Exception(f"Address with the ID '{address_id}' does not exist")
+
         return await self._address_repository.set_default_address(
             address_id=address_id
         )

@@ -127,7 +127,7 @@ async def insert_address(container):
         address=data
     )
 
-    return {'address': str()}
+    return result
 
 
 @address_bp.configure('/api/address/<address_id>/default', methods=['PUT'], auth_scheme='read')
