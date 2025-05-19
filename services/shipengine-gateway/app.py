@@ -9,6 +9,7 @@ from routes.health import health_bp
 from routes.labels import label_bp
 from routes.rates import rates_bp
 from routes.shipment import shipment_bp
+from routes.address import address_bp
 from utilities.provider import ContainerProvider
 
 load_dotenv()
@@ -25,6 +26,7 @@ app.register_blueprint(shipment_bp)
 app.register_blueprint(carrier_bp)
 app.register_blueprint(rates_bp)
 app.register_blueprint(label_bp)
+app.register_blueprint(address_bp)
 
 provider = ContainerProvider.initialize_provider()
 

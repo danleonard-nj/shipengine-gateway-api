@@ -1,27 +1,21 @@
 from dataclasses import dataclass
 
-from deprecated import deprecated
 from framework.serialization import Serializable
 
 
+@dataclass
 class CarrierServiceModel(Serializable):
+    service_code: str
+    name: str
+
     @staticmethod
-    def from_data(
-        data: dict
-    ):
+    def from_data(data: dict) -> "CarrierServiceModel":
         return CarrierServiceModel(
             service_code=data.get('service_code'),
-            name=data.get('name'))
+            name=data.get('name')
+        )
 
-    def __init__(
-        self,
-        service_code: str,
-        name: str
-    ):
-        self.service_code = service_code
-        self.name = name
-
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             'service_code': self.service_code,
             'name': self.name

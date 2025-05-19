@@ -9,7 +9,9 @@ from httpx import AsyncClient
 from quart import Quart, request
 
 from clients.shipengine_client import ShipEngineClient
+from data.address_repository import AddressRepository
 from data.shipment_repository import ShipmentRepository
+from services.address_service import AddressService
 from services.carrier_service import CarrierService
 from services.label_service import LabelService
 from services.mapper_service import MapperService
@@ -80,9 +82,12 @@ class ContainerProvider(ProviderBase):
             dependency_type=AsyncIOMotorClient,
             factory=configure_mongo_client)
 
+        descriptors.add_singleton(AddressRepository)
+
         descriptors.add_singleton(MapperService)
         descriptors.add_singleton(ShipEngineClient)
         descriptors.add_singleton(CarrierService)
+        descriptors.add_singleton(AddressService)
 
         descriptors.add_singleton(ShipmentRepository)
 
