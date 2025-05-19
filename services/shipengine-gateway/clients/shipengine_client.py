@@ -52,7 +52,6 @@ class ShipEngineClient:
         self,
         label_id: str
     ):
-        # /v1/labels/{id}/void
         ArgumentNullException.if_none_or_whitespace(label_id, 'label_id')
 
         logger.info(f'Void label: {label_id}')

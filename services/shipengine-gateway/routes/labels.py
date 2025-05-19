@@ -32,13 +32,13 @@ async def create_label(container, shipment_id):
 
 
 @label_bp.configure('/api/labels/<label_id>/void', methods=['PUT'], auth_scheme='write')
-async def void_label(container, label_id: str):
+async def void_label(container, label_id):
     label_service: LabelService = container.resolve(
         LabelService)
 
     logger.info(f'Void label: {label_id}')
 
-    status = await label_service.void_label(
+    result = await label_service.void_label(
         label_id=label_id)
 
-    return {'shipengine_status': status}
+    return {'response': result}

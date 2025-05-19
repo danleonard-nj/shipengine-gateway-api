@@ -190,7 +190,7 @@ class Shipment(ValidatableDataclass, Serializable):
     return_address: ShipmentAddress
     # Cases where a carrier / service code is not selected
     service_code: Optional[str]
-    ship_date: str
+    ship_date: Optional[str]
     origin: ShipmentAddress
     destination: ShipmentAddress
     shipment_status: str
