@@ -1,2 +1,3 @@
 services/shipengine-gateway/build-deploy.bat
 services/shipengine-gateway/workbook.ipynb
+services/shipengine-gateway/docs/collection.json

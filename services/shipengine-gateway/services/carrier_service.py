@@ -75,20 +75,29 @@ class CarrierService:
         self
     ):
         logger.info('Get carrier balances')
-
-        response = await self._client.get_carriers()
-        carriers = response.get('carriers')
+        try:
+            response = await self._client.get_carriers()
+            carriers = response.get('carriers')
+            if not isinstance(carriers, list):
+                logger.error(f"Expected 'carriers' to be a list, got: {type(carriers)}. Response: {response}")
+                return {'balances': [], 'error': "Invalid response from carrier API"}
+        except Exception as ex:
+            logger.error(f"Failed to fetch carriers: {ex}")
+            return {'balances': [], 'error': str(ex)}
 
         results = []
         for carrier in carriers:
-            model = Carrier.from_data(data=carrier)
-
-            results.append({
-                'carrier_id': model.carrier_id,
-                'carrier_code': model.carrier_code,
-                'carrier_name': model.name,
-                'balance': model.balance
-            })
+            try:
+                model = Carrier.from_data(data=carrier)
+                results.append({
+                    'carrier_id': model.carrier_id,
+                    'carrier_code': model.carrier_code,
+                    'carrier_name': model.name,
+                    'balance': model.balance if model.balance is not None else 0.0
+                })
+            except Exception as ex:
+                logger.error(f"Failed to parse carrier: {carrier}. Error: {ex}")
+                continue
 
         return {
             'balances': results

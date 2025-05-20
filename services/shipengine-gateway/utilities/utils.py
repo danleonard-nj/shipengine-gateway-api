@@ -9,14 +9,6 @@ def first_or_default(_iterable):
         return None
 
 
-def apply(obj, func):
-    return func(obj)
-
-
-def hours_to_seconds(hours):
-    return hours * 60 * 60
-
-
 class ValidatableDataclass:
     def __post_init__(self):
         for field_def in fields(self):
