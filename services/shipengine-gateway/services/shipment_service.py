@@ -101,136 +101,100 @@ class ShipmentService:
         fetched_shipments = response.get('shipments', [])
 
         # Fetch remaining pages concurrently
-        tasks = [
-            self._shipengine_client.get_shipments(
-                page_number=page,
-                page_size=page_size)
-            for page in range(2, total_pages + 1)
-        ]
-
-        responses = await asyncio.gather(*tasks)
-
-        # Collect shipments from all pages
-        for resp in responses:
-            fetched_shipments.extend(resp.get('shipments', []))
+        if total_pages > 1:
+            tasks = [
+                self._shipengine_client.get_shipments(
+                    page_number=page,
+                    page_size=page_size)
+                for page in range(2, total_pages + 1)
+            ]
+            responses = await asyncio.gather(*tasks)
+            for resp in responses:
+                fetched_shipments.extend(resp.get('shipments', []))
 
         # Fetch existing shipments from the database
         existing_shipments = await self._repository.get_all()
-
-        # The 'shipment_id' property on the ShipEngine model is named 'id' in the database
-        existing_shipments_dict = {}
-        for shipment in existing_shipments:
-            if 'shipment_id' in shipment:
-                existing_shipments_dict[shipment['shipment_id']] = shipment
-            else:
-                logger.info(f'missing shipment ID: {shipment}')
+        existing_shipments_dict = {
+            s['shipment_id']: s for s in existing_shipments if 'shipment_id' in s
+        }
+        for s in existing_shipments:
+            if 'shipment_id' not in s:
+                logger.info(f'missing shipment ID: {s}')
 
         # Prepare mappings
         service_code_mapping = await self._mapper_service.get_carrier_service_code_mapping()
         carrier_mapping = await self._mapper_service.get_carrier_mapping()
 
-        # Track changes
         added_shipments = []
         updated_shipments = []
-        removed_shipments = []
 
         # Process fetched shipments
         for shipment in fetched_shipments:
             shipment_id = shipment['shipment_id']
             if shipment_id in existing_shipments_dict:
-                # Update existing shipment (remove it from the dict to track removes later)
                 existing_shipment = existing_shipments_dict.pop(shipment_id)
-
                 existing = Shipment.from_entity(
                     data=existing_shipment,
                     service_code_mapping=service_code_mapping,
                     carrier_mapping=carrier_mapping)
-
                 current = Shipment.from_data(
                     data=shipment,
                     service_code_mapping=service_code_mapping,
                     carrier_mapping=carrier_mapping)
-
-                # Check if the shipment has changed
                 if hash_shipment(existing.to_dict()) != hash_shipment(current.to_dict()):
                     logger.info(f'Updating shipment: {shipment_id} in the database')
-
                 current.sync_date = datetime.now(timezone.utc)
                 updated_shipments.append(current)
             else:
-                # Add new shipment
-                new = Shipment.from_data(
-                    data=shipment,
-                    service_code_mapping=service_code_mapping,
-                    carrier_mapping=carrier_mapping)
+                added_shipments.append(
+                    Shipment.from_data(
+                        data=shipment,
+                        service_code_mapping=service_code_mapping,
+                        carrier_mapping=carrier_mapping)
+                )
 
-                added_shipments.append(new)
-
-        # Remaining shipments in existing_shipments_dict are removed
         removed_shipments = list(existing_shipments_dict.values())
 
         # Apply changes to the database
-        if any(added_shipments):
-            to_insert = [shipment.to_entity() for shipment in added_shipments]
-            await self._repository.bulk_insert_shipments(to_insert)
+        if added_shipments:
+            await self._repository.bulk_insert_shipments([
+                s.to_entity() for s in added_shipments
+            ])
 
         semaphore = asyncio.Semaphore(10)
 
         async def wrapped_update(shipment):
             async with semaphore:
-                # Update the existing shipment in the database
                 await self._repository.update(
                     selector=shipment.get_selector(),
                     values=shipment.to_entity()
                 )
-
-        tasks = TaskCollection()
-        for shipment in updated_shipments:
-            logger.info(f'Updating shipment: {shipment.shipment_id} in the database')
-            # Update the existing shipment in the database
-            tasks.add_task(wrapped_update(shipment))
-
-        await tasks.run()
+        tasks = [wrapped_update(s) for s in updated_shipments]
+        await asyncio.gather(*tasks)
 
         for shipment in removed_shipments:
-            # Delete the removed shipment from the database
             await self._repository.delete(
-                selector=dict('shipment_id', shipment['shipment_id']))
+                selector={'shipment_id': shipment['shipment_id']})
 
         logger.info(f'Sync complete: {len(added_shipments)} added, {len(updated_shipments)} updated, {len(removed_shipments)} removed')
-
         return len(fetched_shipments)
 
     async def get_shipments(
         self,
         request: GetShipmentRequest
     ) -> Dict:
-        logger.info('Get shipments from ShipEngine client')
+        logger.info('Get shipments from local database (sync if needed)')
 
         page_size = int(request.page_size)
         page_number = int(request.page_number)
         cancelled = request.cancelled
 
-        # Get all shipment count for comparison to response count
-        all_existing_shipment_count = await self._repository.get_shipments_count(
-            cancelled=True
-        )
-
-        # Fetch the first page to get the total number of pages
-        response = await self._shipengine_client.get_shipments(
-            page_number=1,
-            page_size=page_size)
-
-        total_pages = response.get('pages', 1)
-        total_fetched_shipments = response.get('total', 0)
-
-        logger.info(f'Total fetched shipments: {total_fetched_shipments}')
-        logger.info(f'All existing shipment count: {all_existing_shipment_count}')
-
-        if (total_fetched_shipments != all_existing_shipment_count
-                or await self.is_last_sync_over_one_hour_ago()):
-            logger.info('Syncing shipments to the database')
-            total_shipment_count = await self.sync_shipments()
+        # Only check if sync is needed, do not always call remote API
+        needs_sync = await self.is_last_sync_over_one_hour_ago()
+        if needs_sync:
+            logger.info('Last sync over one hour ago, triggering sync in background')
+            # Trigger sync but do not await, so response is fast
+            asyncio.create_task(self.sync_shipments())
 
         # Fetch shipments and document count from the database
         shipments = await self._repository.get_shipments(
@@ -243,28 +207,17 @@ class ShipmentService:
 
         parsed = []
         for shipment in shipments:
-            # Parse the shipment data
             parsed_shipment = Shipment.from_entity(
                 data=shipment,
                 service_code_mapping=service_code_mapping,
                 carrier_mapping=carrier_mapping)
-
             if parsed_shipment.carrier_name is None:
-                # If carrier name is None, skip this shipment
                 logger.info(f"Failed to map carrier name for carrier ID: '{parsed_shipment.carrier_id}' for shipment ID: '{parsed_shipment.shipment_id}'")
-
             parsed.append(parsed_shipment)
-
-        # parsed = [Shipment.from_entity(
-        #     data=shipment,
-        #     service_code_mapping=service_code_mapping,
-        #     carrier_mapping=carrier_mapping)
-        #     for shipment in shipments]
 
         total_shipment_count = await self._repository.get_shipments_count(
             cancelled=cancelled
         )
-
         total_pages = total_shipment_count // page_size + (total_shipment_count % page_size > 0)
 
         return {

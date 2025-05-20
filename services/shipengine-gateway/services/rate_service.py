@@ -77,11 +77,11 @@ class RateService:
         else:
             raise ValueError('Invalid carrier IDs provided')
 
-        request = RateEstimateRequest(
+        request = RateEstimateRequest.from_shipment(
             shipment=shipment,
             carrier_ids=carrier_ids)
 
-        data = request.to_dict()
+        data = request.__dict__
 
         rates = await self._client.estimate_shipment(
             shipment=data)

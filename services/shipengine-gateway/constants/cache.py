@@ -19,3 +19,11 @@ class CacheKey:
     @staticmethod
     def get_label(shipment_id):
         return f'shipengine-label-shipment-id-{shipment_id}'
+
+    @staticmethod
+    def get_address_list():
+        return 'shipengine-address-list'
+
+    @staticmethod
+    def get_default_address():
+        return 'shipengine-default-address'

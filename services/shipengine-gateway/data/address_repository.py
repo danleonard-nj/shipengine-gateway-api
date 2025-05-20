@@ -62,17 +62,25 @@ class AddressRepository(MongoRepositoryAsync):
     ):
         # Set all other addresses to not default
         await self.collection.update_many(
-            {'is_default': True},
+            {'is_default': True, 'address_id': {'$ne': address_id}},
             {'$set': {'is_default': False}}
         )
 
         # Set the specified address to default
         result = await self.collection.update_one(
-            {'_id': address_id},
+            {'address_id': address_id},
             {'$set': {'is_default': True}}
         )
+        return result
 
     async def get_default_address(
         self
     ):
         return await self.collection.find_one({'is_default': True})
+
+    async def delete_address(
+        self,
+        address_id: str
+    ):
+        result = await self.collection.delete_one({'address_id': address_id})
+        return {'deleted_count': result.deleted_count}

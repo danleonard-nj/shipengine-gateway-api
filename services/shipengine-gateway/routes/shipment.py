@@ -8,15 +8,17 @@ logger = get_logger(__name__)
 shipment_bp = MetaBlueprint('shipment_bp', __name__)
 
 
+def _get_shipment_service(container):
+    return container.resolve(ShipmentService)
+
+
 @shipment_bp.configure('/api/shipment', methods=['GET'], auth_scheme='read')
 async def get_shipments(container):
-    shipment_service: ShipmentService = container.resolve(
-        ShipmentService)
+    shipment_service = _get_shipment_service(container)
 
-    shipment_request = GetShipmentRequest(
-        request=request)
+    shipment_request = GetShipmentRequest.from_request(request)
 
-    logger.info(f'Get shipments: {shipment_request.to_dict()}')
+    logger.info(f'Get shipments: {shipment_request.__dict__}')
 
     shipments = await shipment_service.get_shipments(
         request=shipment_request)
@@ -26,8 +28,7 @@ async def get_shipments(container):
 
 @shipment_bp.configure('/api/shipment/<shipment_id>', methods=['GET'], auth_scheme='read')
 async def get_shipment(container, shipment_id):
-    shipment_service: ShipmentService = container.resolve(
-        ShipmentService)
+    shipment_service = _get_shipment_service(container)
 
     shipment = await shipment_service.get_shipment(
         shipment_id=shipment_id)
@@ -37,8 +38,7 @@ async def get_shipment(container, shipment_id):
 
 @shipment_bp.configure('/api/shipment', methods=['POST'], auth_scheme='write')
 async def post_shipment(container):
-    shipment_service: ShipmentService = container.resolve(
-        ShipmentService)
+    shipment_service = _get_shipment_service(container)
 
     _content = await request.get_json()
 
@@ -53,8 +53,7 @@ async def post_shipment(container):
 
 @shipment_bp.configure('/api/shipment/<shipment_id>/cancel', methods=['PUT'], auth_scheme='write')
 async def cancel_shipment(container, shipment_id: str):
-    shipment_service: ShipmentService = container.resolve(
-        ShipmentService)
+    shipment_service = _get_shipment_service(container)
 
     return await shipment_service.cancel_shipment(
         shipment_id=shipment_id)
