@@ -17,7 +17,7 @@ class Address(BaseModel):
 
 class Weight(BaseModel):
     value: float
-    unit: str = "ounce"
+    unit: str = "pound"
 
 
 class InsuredValue(BaseModel):
@@ -76,9 +76,8 @@ def convert_to_shipengine_rates_payload(raw: dict, carrier_ids: list[str]) -> Sh
         country_code=origin["country_code"]
     )
 
-    weight_oz = raw["weight"]
     package = Package(
-        weight=Weight(value=weight_oz),
+        weight=Weight(value=raw["total_weight"]),
         insured_value=InsuredValue(amount=200)
     )
 
