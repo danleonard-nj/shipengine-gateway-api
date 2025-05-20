@@ -12,6 +12,9 @@ from models.requests import RateEstimateRequest
 from services.carrier_service import CarrierService
 from pydantic import BaseModel
 
+from services.shipment_service import ShipmentService
+
+
 logger = get_logger(__name__)
 
 
@@ -35,15 +38,18 @@ class RateService:
         self,
         carrier_service: CarrierService,
         shipengine_client: ShipEngineClient,
-        cache_client: CacheClientAsync
+        cache_client: CacheClientAsync,
+        shipment_service: ShipmentService
     ):
         ArgumentNullException.if_none(carrier_service, 'carrier_service')
         ArgumentNullException.if_none(shipengine_client, 'shipengine_client')
         ArgumentNullException.if_none(cache_client, 'cache_client')
+        ArgumentNullException.if_none(shipment_service, 'shipment_service')
 
         self._client = shipengine_client
         self._carrier_service = carrier_service
         self._cache_client = cache_client
+        self._shipment_service = shipment_service
 
     async def get_estimate(
         self,
@@ -113,6 +119,11 @@ class RateService:
         # Keeping the shape the same as the one in the estimate for the frontend
         result = transform_to_estimate_response_shape(
             rate_response=rates
+        )
+
+        # This creates a new shipment in the system that we have to wipe
+        await self._shipment_service.cancel_shipment(
+            shipment_id=rates.get('shipment_id')
         )
 
         return result
