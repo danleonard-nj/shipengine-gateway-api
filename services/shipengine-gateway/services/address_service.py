@@ -60,7 +60,7 @@ class AddressService:
         cache_client: CacheClientAsync
     ):
         self._address_repository = address_repository
-        self._maps_key = configuration.google.get('google_maps_key')
+        self._maps_key = configuration.google_maps.get('google_maps_key')
         self._http_client = http_client
         self._cache_client = cache_client
 
