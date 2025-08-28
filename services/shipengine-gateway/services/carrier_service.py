@@ -6,6 +6,7 @@ from constants.cache import CacheKey
 from framework.clients.cache_client import CacheClientAsync
 from framework.logger.providers import get_logger
 from models.carrier import Carrier, CarrierServiceModel
+from framework.configuration import Configuration
 
 logger = get_logger(__name__)
 
@@ -15,11 +16,13 @@ SERVICE_CODE_TTL_MINUTES = 60 * 24 * 7
 class CarrierService:
     def __init__(
         self,
+        configuration: Configuration,
         shipengine_client: ShipEngineClient,
         cache_client: CacheClientAsync
     ):
         self._client = shipengine_client
         self._cache_client = cache_client
+        self._ups_account_number = configuration.shipengine.get('ups_account_number')
 
     async def get_carrier_models(
         self
@@ -43,6 +46,10 @@ class CarrierService:
             Carrier.from_data(data=carrier)
             for carrier in carriers
         ]
+
+        # for model in models:
+        #     if model.account_number == self._ups_account_number:
+        #         model.name = "UPS (Billed Separately)"
 
         return [model.to_dict() for model in models]
 
