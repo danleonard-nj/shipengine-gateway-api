@@ -97,11 +97,11 @@ def transform_to_estimate_response_shape(rate_response: dict) -> list[dict]:
     rates = rate_response.get("rate_response", {}).get("rates", [])
     transformed = []
 
-    carrier_friendly_name = rate.get("carrier_friendly_name")
-    if rate.get('carrier_id') == 'se-485981':
-        carrier_friendly_name = "UPS (Billed Thru Ship Engine)"
-
     for rate in rates:
+        carrier_friendly_name = rate.get("carrier_friendly_name")
+        if rate.get('carrier_id') == 'se-485981':
+            carrier_friendly_name = "UPS (Billed Thru Ship Engine)"
+
         transformed.append({
             "carrier_code": rate.get("carrier_code"),
             "carrier_delivery_days": rate.get("carrier_delivery_days"),
